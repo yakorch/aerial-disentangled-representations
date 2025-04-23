@@ -1,0 +1,8 @@
+name: disent
+channels:
+  - conda-forge
+dependencies:
+  - numpy
+  - opencv
+  - python=3.12
+  - pytorch
