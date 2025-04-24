@@ -4,7 +4,7 @@ import albumentations as A
 import cv2
 
 from disentangled_representations import ORIGINAL_DATASETS_DIR, PREPROCESSED_DATASETS_DIR
-from .abstract_aerial_datasets import SimpleSingleImagesDataset, FilenameIDPairedImagesDataset
+from .abstract_aerial_datasets import SimpleSingleImagesDataset, FilenameIDPairedImagesDataset, RandomDomainFilenameIDDataset
 
 
 class VPairDistractorsDataset(SimpleSingleImagesDataset):
@@ -62,3 +62,16 @@ class GVLM_CD_Dataset(FilenameIDPairedImagesDataset):
 
         super().__init__(images_A_dir=A_path, images_B_dir=B_path,
                          cv2_read_flag=cv2.IMREAD_COLOR if read_color else cv2.IMREAD_GRAYSCALE, shared_transform=shared_transform, unique_transform=unique_transform)
+
+
+
+class BANDONDataset(RandomDomainFilenameIDDataset):
+    def __init__(self, split: Literal["train", "val", "test"], read_color: bool, shared_transform: A.Compose, unique_transform: A.Compose):
+        # NOTE: split `test_ood` is not supported because it has a large image imbalance.
+        split_path = PREPROCESSED_DATASETS_DIR / "BANDON" / split
+
+        A_path = split_path / "t1"
+        B_path = split_path / "t2"
+        C_path = split_path / "t3"
+
+        super().__init__(image_dirs=[A_path, B_path, C_path], cv2_read_flag=cv2.IMREAD_COLOR if read_color else cv2.IMREAD_GRAYSCALE, shared_transform=shared_transform, unique_transform=unique_transform)

@@ -6,6 +6,9 @@ import numpy as np
 import torch
 import albumentations as A
 from loguru import logger
+import copy
+import random
+
 
 def _read_image(path: pathlib.Path, cv2_flag: int) -> np.ndarray:
     image = cv2.imread(str(path), cv2_flag)
@@ -14,8 +17,9 @@ def _read_image(path: pathlib.Path, cv2_flag: int) -> np.ndarray:
     return image
 
 def _get_image_paths_in_dir(dir_path: pathlib.Path) -> list[pathlib.Path]:
-    # NOTE: only `.png` images are searched.
-    image_paths = list(dir_path.glob("*.png"))
+    image_paths = []
+    for ext in ("png", "jpg"):
+        image_paths.extend(dir_path.glob(f"*.{ext}"))
     if not image_paths:
         logger.warning(f"No images found in {dir_path}.")
     return image_paths
@@ -59,7 +63,7 @@ class FilenameIDPairedImagesDataset(PairedImagesDataset):
         self.image_paths_A = _get_image_paths_in_dir(images_A_dir)
         self.image_paths_B = _get_image_paths_in_dir(images_B_dir)
 
-        assert len(self.image_paths_A) == len(self.image_paths_B)
+        assert len(self.image_paths_A) == len(self.image_paths_B), f"{len(self.image_paths_A)=}, {len(self.image_paths_B)=}."
         assert all(a.name == b.name for a, b in
                    zip(self.image_paths_A, self.image_paths_B)), "Image filenames in A and B paths must be the same."
 
@@ -87,3 +91,46 @@ class FilenameIDPairedImagesDataset(PairedImagesDataset):
         image_B = self.unique_transform(image=image_B)["image"]
 
         return image_A, image_B
+
+
+class RandomDomainFilenameIDDataset(FilenameIDPairedImagesDataset):
+    def __init__(
+        self,
+        image_dirs: list[pathlib.Path],
+        cv2_read_flag: int,
+        shared_transform: A.Compose,
+        unique_transform: A.Compose,
+    ):
+        assert len(image_dirs) >= 2, "Need at least two domains to sample from."
+        shared = copy.deepcopy(shared_transform)
+        unique = unique_transform
+
+        super().__init__(
+            images_A_dir=image_dirs[0],
+            images_B_dir=image_dirs[1],
+            cv2_read_flag=cv2_read_flag,
+            shared_transform=shared,
+            unique_transform=unique,
+        )
+
+        self.paths_per_domain = [
+            _get_image_paths_in_dir(d) for d in image_dirs
+        ]
+        self.num_domains = len(self.paths_per_domain)
+        self.num_images = len(self.paths_per_domain[0])
+
+        for paths in self.paths_per_domain[1:]:
+            assert len(paths) == self.num_images, "All dirs must have equal size"
+            for a, b in zip(self.paths_per_domain[0], paths):
+                assert a.name == b.name, "Filenames must match across domains"
+
+    def __len__(self) -> int:
+        return self.num_images
+
+    def __getitem__(self, idx: int) -> tuple[torch.Tensor, torch.Tensor]:
+        dom_a, dom_b = random.sample(range(self.num_domains), 2)
+
+        self.image_paths_A = self.paths_per_domain[dom_a]
+        self.image_paths_B = self.paths_per_domain[dom_b]
+
+        return super().__getitem__(idx)
