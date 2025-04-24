@@ -12,8 +12,8 @@ _noise_transform = A.Compose([A.OneOf(
      A.RandomBrightnessContrast(brightness_limit=0.2, contrast_limit=0.2), ], p=0.8),
 
     A.OneOf([A.GaussianBlur(blur_limit=(3, 7)), A.MotionBlur(blur_limit=(3, 7)), ], p=0.5), A.GaussNoise(var_limit=(5.0, 20.0), p=0.3),
-
-    A.Normalize(mean=(0.5, 0.5, 0.5), std=(0.5, 0.5, 0.5)), ToTensorV2(), ])
+    # A.Normalize(mean=(0.5, 0.5, 0.5), std=(0.5, 0.5, 0.5)),
+    ToTensorV2(), ])
 
 _read_color = True
 
