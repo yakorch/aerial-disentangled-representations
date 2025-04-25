@@ -40,20 +40,16 @@ class Down(nn.Module):
         return self.pool_conv(x)
 
 
-
 class Up(nn.Module):
     def __init__(self, in_channels: int, out_channels: int, conv_block: Type[nn.Module]) -> None:
         super().__init__()
-
 
         decoder_channels = in_channels - out_channels
         skip_channels = out_channels
         self.built_for_in = 2 * skip_channels
 
-        self.up = nn.Sequential(
-            nn.Upsample(scale_factor=2, mode="bilinear", align_corners=True),
-            nn.Conv2d(decoder_channels, skip_channels, kernel_size=1, bias=False),
-        )
+        self.up = nn.Sequential(nn.Upsample(scale_factor=2, mode="bilinear", align_corners=True),
+                                nn.Conv2d(decoder_channels, skip_channels, kernel_size=1, bias=False), )
         self.conv = conv_block(2 * skip_channels, out_channels)
 
     def forward(self, x: torch.Tensor, skip: torch.Tensor) -> torch.Tensor:
@@ -61,8 +57,6 @@ class Up(nn.Module):
         dy = skip.size(2) - x.size(2)
         dx = skip.size(3) - x.size(3)
         if dy or dx:
-            x = F.pad(x, [dx//2, dx-dx//2, dy//2, dy-dy//2])
-        # concat and fuse
+            x = F.pad(x, [dx // 2, dx - dx // 2, dy // 2, dy - dy // 2])
         x = torch.cat([skip, x], dim=1)
         return self.conv(x)
-
