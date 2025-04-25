@@ -20,6 +20,8 @@ def _get_image_paths_in_dir(dir_path: pathlib.Path) -> list[pathlib.Path]:
     image_paths = []
     for ext in ("png", "jpg"):
         image_paths.extend(dir_path.glob(f"*.{ext}"))
+    image_paths = sorted(image_paths, key=lambda p: p.name.lower())
+
     if not image_paths:
         logger.warning(f"No images found in {dir_path}.")
     return image_paths
