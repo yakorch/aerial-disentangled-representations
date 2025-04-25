@@ -24,6 +24,7 @@ from .models.model_kapellmeister import I2IModel, Kapellmeister, VariationalTran
 class LossWeights:
     w_L1_image: float = 0.25
     w_perceptual: float = 1.0
+    w_cross_recon: float = 2.0
     w_KL: float = 1.0
     w_struct_consistency: float = 0.5
     w_transient_consistency: float = 0.5
@@ -32,12 +33,14 @@ class LossWeights:
 
 class LitKapellmeister(pl.LightningModule):
     def __init__(self, I2I_model: I2IModel, variational_transient_encoder: VariationalTransientEncoder, style_params_MLP: torch.nn.Module,
-                 loss_weights: LossWeights, lr: float = 1e-4, ):
+                 loss_weights: LossWeights, lr: float = 1e-4, anneal_epochs: int = 10):
         super().__init__()
 
         self.I2I_model = I2I_model
         self.variational_transient_encoder = variational_transient_encoder
         self.style_params_MLP = style_params_MLP
+
+        self.anneal_epochs = anneal_epochs
 
         self.kapellmeister = Kapellmeister(I2I_model=self.I2I_model, variational_transient_encoder=self.variational_transient_encoder,
                                            style_params_MLP=self.style_params_MLP, )
@@ -74,12 +77,14 @@ class LitKapellmeister(pl.LightningModule):
             losses["self_transient_consistency"] += trans_loss
             losses["cross_transient_consistency"] += trans_cross
 
-        total = ((losses['self_recon_L1'] + losses['cross_recon_L1']) * self.loss_weights.w_L1_image + (
-                losses['self_recon_perceptual'] + losses['cross_recon_perceptual']) * self.loss_weights.w_perceptual + losses['KL'] * self.loss_weights.w_KL + (
-                             losses["self_struct_consistency"] + self.loss_weights.w_cross_consistency * losses[
-                         "cross_struct_consistency"]) * self.loss_weights.w_struct_consistency + (
-                         (losses["self_transient_consistency"] + losses[
-                             "cross_transient_consistency"] * self.loss_weights.w_cross_consistency) * self.loss_weights.w_transient_consistency))
+        anneal_factor = min(1.0, self.current_epoch / float(self.anneal_epochs)) if self.anneal_epochs > 0 else 1.0
+
+        total = ((losses['self_recon_L1'] + losses['cross_recon_L1'] * self.loss_weights.w_cross_recon) * self.loss_weights.w_L1_image + (
+                losses['self_recon_perceptual'] + losses[
+            'cross_recon_perceptual'] * self.loss_weights.w_cross_recon) * self.loss_weights.w_perceptual + anneal_factor * (
+                         losses['KL'] * self.loss_weights.w_KL + (losses["self_struct_consistency"] + self.loss_weights.w_cross_consistency * losses[
+                     "cross_struct_consistency"]) * self.loss_weights.w_struct_consistency + ((losses["self_transient_consistency"] + losses[
+                     "cross_transient_consistency"] * self.loss_weights.w_cross_consistency) * self.loss_weights.w_transient_consistency)))
         losses['total'] = total
         return losses
 
@@ -117,18 +122,21 @@ def parse_channels(ctx, param, val):
 @click.option('--max_epochs', default=50, help='Number of epochs')
 @click.option('--unet_channels', default='32,64,128,256', callback=parse_channels, help='CSV, e.g. `--unet-channels 32,64,128,256`.')
 @click.option('--latent_d', default=128, help='Transient latent dimensionality.')
-@click.option('--w_l1_image', default=0.25, help='L1 loss weight')
+@click.option('--w_l1_image', default=0.5, help='L1 loss weight')
 @click.option('--w_perceptual', default=1.0, help='Perceptual loss weight')
-@click.option('--w_kl', default=1.0, help='KL loss weight')
+@click.option('--w_cross_recon', default=3.0, help='How much cross reconstruction is more important than self reconstruction.')
+@click.option('--w_kl', default=0.5, help='KL loss weight')
 @click.option('--w_struct_consistency', default=0.5, help='Structural consistency weight')
-@click.option('--w_transient_consistency', default=0.5, help='Transient consistency weight')
+@click.option('--w_transient_consistency', default=0.75, help='Transient consistency weight')
 @click.option('--w_cross_consistency', default=0.5, help='Cross consistency weight')
 @click.option('--accelerator', default='auto', help="Accelerator: 'cpu', 'gpu', 'mps', or 'auto'")
 @click.option('--devices', default=1, type=int, help='Number of devices (e.g. GPUs or MPS)')
-def main(batch_size, val_batch_size, num_workers, lr, max_epochs, unet_channels, latent_d, w_l1_image, w_perceptual, w_kl, w_struct_consistency,
-         w_transient_consistency, w_cross_consistency, accelerator, devices):
-    loss_weights = LossWeights(w_L1_image=w_l1_image, w_perceptual=w_perceptual, w_KL=w_kl, w_struct_consistency=w_struct_consistency,
-                               w_transient_consistency=w_transient_consistency, w_cross_consistency=w_cross_consistency)
+@click.option('--anneal_epochs', default=10, type=int, help='Number of epochs over which to linearly anneal KL & consistency terms')
+def main(batch_size, val_batch_size, num_workers, lr, max_epochs, unet_channels, latent_d, w_l1_image, w_perceptual, w_cross_recon, w_kl, w_struct_consistency,
+         w_transient_consistency, w_cross_consistency, accelerator, devices, anneal_epochs):
+    loss_weights = LossWeights(w_L1_image=w_l1_image, w_perceptual=w_perceptual, w_cross_recon=w_cross_recon, w_KL=w_kl,
+                               w_struct_consistency=w_struct_consistency, w_transient_consistency=w_transient_consistency,
+                               w_cross_consistency=w_cross_consistency)
 
     train_loader = create_train_data_loader_for_image_pairs(batch_size=batch_size, num_workers=num_workers, )
     val_loader = create_val_data_loader_for_image_pairs(batch_size=val_batch_size, num_workers=2, )
@@ -144,7 +152,7 @@ def main(batch_size, val_batch_size, num_workers, lr, max_epochs, unet_channels,
     style_params_MLP = nn.Sequential(nn.Linear(latent_d, latent_d), nn.ReLU(), nn.Linear(latent_d, 2 * unet_channels[-1]))
 
     model = LitKapellmeister(I2I_model=I2I_model, variational_transient_encoder=variational_transient_encoder, style_params_MLP=style_params_MLP,
-                             loss_weights=loss_weights, lr=lr)
+                             loss_weights=loss_weights, lr=lr, anneal_epochs=anneal_epochs)
 
     logger = TensorBoardLogger("tb_logs", name="disent_rep")
 
