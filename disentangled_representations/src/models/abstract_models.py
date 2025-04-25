@@ -48,8 +48,14 @@ class VariationalTransientEncoder(nn.Module, ABC):
     @staticmethod
     @final
     def sample_from_multivariate_normal(z_params: torch.Tensor) -> torch.Tensor:
-        mu, log_variance = z_params.chunk(2, dim=1)
+        mu, log_variance = VariationalTransientEncoder.multivariate_params_from_vector(z_params)
         std = torch.exp(0.5 * log_variance)
         eps = torch.randn_like(std)
         z = mu + eps * std
         return z
+
+    @staticmethod
+    @final
+    def multivariate_params_from_vector(z_params: torch.Tensor) -> tuple[torch.Tensor, torch.Tensor]:
+        mu, log_variance = z_params.chunk(2, dim=1)
+        return mu, log_variance

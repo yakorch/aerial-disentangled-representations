@@ -19,7 +19,7 @@ class DISTSPerceptualLoss:
         return self.DISTS_loss(A, B, require_grad=True, batch_average=True)
 
 
-def wasserstein_distance_between_normals(mu_1: torch.Tensor, log_variance_1: torch.Tensor, mu_2: torch.Tensor, log_variance_2: torch.Tensor):
+def Wasserstein_distance_between_normals(mu_1: torch.Tensor, log_variance_1: torch.Tensor, mu_2: torch.Tensor, log_variance_2: torch.Tensor):
     var_1 = log_variance_1.exp()
     var_2 = log_variance_2.exp()
 

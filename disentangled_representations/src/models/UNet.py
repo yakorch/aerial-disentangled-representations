@@ -4,7 +4,7 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
-from .UNet_parts import Down, Up, DoubleNonLinearConv
+from .UNet_parts import Down, Up, DoubleNonLinearConv, SeparableConv
 from .abstract_models import I2IModel
 
 
@@ -20,7 +20,7 @@ def _adaptive_instance_norm(features: torch.Tensor, params: torch.Tensor, eps: f
     return gamma * normalized + beta
 
 class UNet(I2IModel):
-    def __init__(self, in_channels: int, out_channels: int, channels: Sequence[int], conv_block_down: Type[nn.Module], conv_block_up: Type[nn.Module]):
+    def __init__(self, in_channels: int, out_channels: int, channels: Sequence[int], conv_block_down: Type[nn.Module] = DoubleNonLinearConv, conv_block_up: Type[nn.Module] = SeparableConv):
         super().__init__()
         assert len(channels) >= 1
 
