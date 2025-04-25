@@ -8,8 +8,8 @@ import torch.nn as nn
 from pytorch_lightning.loggers import TensorBoardLogger
 
 from .data_processing.aerial_dataset_loaders import create_train_data_loader_for_image_pairs, create_val_data_loader_for_image_pairs
-from .losses.objective_components import compute_self_losses, compute_cross_losses
-from .models.model_kapellmeister import Kapellmeister, I2IModel, VariationalTransientEncoder
+from .losses.objective_components import compute_cross_losses, compute_self_losses
+from .models.model_kapellmeister import I2IModel, Kapellmeister, VariationalTransientEncoder
 
 
 @dataclass
@@ -112,7 +112,7 @@ def parse_channels(ctx, param, val):
 @click.option('--w_transient_consistency', default=0.5, help='Transient consistency weight')
 @click.option('--w_cross_consistency', default=0.5, help='Cross consistency weight')
 @click.option('--accelerator', default='auto', help="Accelerator: 'cpu', 'gpu', 'mps', or 'auto'")
-@click.option('--devices', default=None, type=int, help='Number of devices (e.g. GPUs or MPS)')
+@click.option('--devices', default=1, type=int, help='Number of devices (e.g. GPUs or MPS)')
 def main(batch_size, val_batch_size, num_workers, lr, max_epochs, unet_channels, latent_d, w_l1_image, w_perceptual, w_kl, w_struct_consistency,
          w_transient_consistency, w_cross_consistency, accelerator, devices):
     loss_weights = LossWeights(w_L1_image=w_l1_image, w_perceptual=w_perceptual, w_KL=w_kl, w_struct_consistency=w_struct_consistency,
@@ -121,15 +121,15 @@ def main(batch_size, val_batch_size, num_workers, lr, max_epochs, unet_channels,
     train_loader = create_train_data_loader_for_image_pairs(batch_size=batch_size, num_workers=num_workers, )
     val_loader = create_val_data_loader_for_image_pairs(batch_size=val_batch_size, num_workers=2, )
 
-    from .models.UNet import UNet
     from .models.transient_encoders import EfficientNetB0VariationalTransientEncoder
+    from .models.UNet import UNet
 
     unet = UNet(in_channels=1, out_channels=1, channels=unet_channels)
     efficient_net_b0 = EfficientNetB0VariationalTransientEncoder(in_channels=1, latent_dimensionality=latent_d)
 
     I2I_model = unet
     variational_transient_encoder = efficient_net_b0
-    style_params_MLP = nn.Sequential(nn.Linear(latent_d, latent_d), nn.ReLU(), nn.Linear(latent_d, unet_channels[-1]))
+    style_params_MLP = nn.Sequential(nn.Linear(latent_d, latent_d), nn.ReLU(), nn.Linear(latent_d, 2 * unet_channels[-1]))
 
     model = LitKapellmeister(I2I_model=I2I_model, variational_transient_encoder=variational_transient_encoder, style_params_MLP=style_params_MLP,
                              loss_weights=loss_weights, lr=lr)
