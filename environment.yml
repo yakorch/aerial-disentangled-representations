@@ -2,7 +2,23 @@ name: disent
 channels:
   - conda-forge
 dependencies:
+  - albumentations
+  - click
+  - ipykernel
+  - ipywidgets
+  - jupyter
+  - jupyterlab
+  - lightning
+  - loguru
+  - matplotlib
+  - notebook
   - numpy
   - opencv
   - python=3.12
   - pytorch
+  - tensorboard
+  - timm
+  - torchinfo
+  - torchvision
+  - pip:
+    - DISTS-pytorch==0.1
