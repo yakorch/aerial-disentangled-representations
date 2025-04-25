@@ -1,12 +1,9 @@
-import warnings
 from typing import override
 
 import torch
 from torch import nn
 
 from .abstract_models import VariationalTransientEncoder
-
-warnings.filterwarnings('ignore', message=r".*deprecated since 0\.13.*", category=UserWarning, module="torchvision.models._utils")
 
 
 class EfficientNetB0VariationalTransientEncoder(VariationalTransientEncoder):

@@ -1,3 +1,7 @@
+import warnings
+
+warnings.filterwarnings('ignore', message=r'.*deprecated since 0\.13.*', category=UserWarning, module=r'torchvision\.models\._utils')
+
 from collections import defaultdict
 from dataclasses import dataclass
 
