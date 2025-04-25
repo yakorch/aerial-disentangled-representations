@@ -122,8 +122,8 @@ def parse_channels(ctx, param, val):
 @click.option('--max_epochs', default=50, help='Number of epochs')
 @click.option('--unet_channels', default='32,64,128,256', callback=parse_channels, help='CSV, e.g. `--unet-channels 32,64,128,256`.')
 @click.option('--latent_d', default=128, help='Transient latent dimensionality.')
-@click.option('--w_l1_image', default=0.5, help='L1 loss weight')
-@click.option('--w_perceptual', default=1.0, help='Perceptual loss weight')
+@click.option('--w_l1_image', default=0.75, help='L1 loss weight')
+@click.option('--w_perceptual', default=1.5, help='Perceptual loss weight')
 @click.option('--w_cross_recon', default=3.0, help='How much cross reconstruction is more important than self reconstruction.')
 @click.option('--w_kl', default=0.5, help='KL loss weight')
 @click.option('--w_struct_consistency', default=0.5, help='Structural consistency weight')
@@ -142,13 +142,12 @@ def main(batch_size, val_batch_size, num_workers, lr, max_epochs, unet_channels,
     val_loader = create_val_data_loader_for_image_pairs(batch_size=val_batch_size, num_workers=2, )
 
     from .models.transient_encoders import EfficientNetB0VariationalTransientEncoder
-    from .models.UNet import UNet
+    from .models.UNet import UNet, DoubleNonLinearConv
 
-    unet = UNet(in_channels=1, out_channels=1, channels=unet_channels)
-    efficient_net_b0 = EfficientNetB0VariationalTransientEncoder(in_channels=1, latent_dimensionality=latent_d)
+    # efficient_net_b0 = EfficientNetB0VariationalTransientEncoder(in_channels=1, latent_dimensionality=latent_d)
 
-    I2I_model = unet
-    variational_transient_encoder = efficient_net_b0
+    I2I_model = UNet(in_channels=1, out_channels=1, channels=unet_channels, conv_block_down=DoubleNonLinearConv, conv_block_up=DoubleNonLinearConv)
+    variational_transient_encoder = EfficientNetB0VariationalTransientEncoder(in_channels=1, latent_dimensionality=latent_d)
     style_params_MLP = nn.Sequential(nn.Linear(latent_d, latent_d), nn.ReLU(), nn.Linear(latent_d, 2 * unet_channels[-1]))
 
     model = LitKapellmeister(I2I_model=I2I_model, variational_transient_encoder=variational_transient_encoder, style_params_MLP=style_params_MLP,
