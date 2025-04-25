@@ -2,12 +2,16 @@ import warnings
 
 warnings.filterwarnings('ignore', message=r'.*deprecated since 0\.13.*', category=UserWarning, module=r'torchvision\.models\._utils')
 
+import torch
+
+torch.set_float32_matmul_precision('high')
+
 from collections import defaultdict
 from dataclasses import dataclass
 
 import click
 import pytorch_lightning as pl
-import torch
+
 import torch.nn as nn
 from pytorch_lightning.loggers import TensorBoardLogger
 
@@ -41,7 +45,7 @@ class LitKapellmeister(pl.LightningModule):
         self.loss_weights = loss_weights
         self.lr = lr
 
-        self.save_hyperparameters(ignore=["i2i_model", "variational_transient_encoder", "style_params_MLP"])
+        self.save_hyperparameters(ignore=["I2I_model", "variational_transient_encoder", "style_params_MLP"])
 
     def forward(self, A, B):
         return self.kapellmeister.all_reconstructions(A, B)
