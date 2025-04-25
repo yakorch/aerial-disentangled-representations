@@ -64,18 +64,22 @@ class LitKapellmeister(pl.LightningModule):
             cross_losses, struct_cross, trans_cross = compute_cross_losses(A=originals[i], recon_metadata=self_metas[i], A_hat=hats[i],
                                                                            A_hat_hidden_params=hat_params[i], B_hat_hidden_params=hat_params[1 - i])
 
-            losses['self_L1'] += recon_losses[0]
-            losses['self_perceptual'] += recon_losses[1]
-            losses['cross_L1'] += cross_losses[0]
-            losses['cross_perceptual'] += cross_losses[1]
+            losses['self_recon_L1'] += recon_losses[0]
+            losses['self_recon_perceptual'] += recon_losses[1]
+            losses['cross_recon_L1'] += cross_losses[0]
+            losses['cross_recon_perceptual'] += cross_losses[1]
             losses['KL'] += KL_loss
-            losses['struct_consistency'] += struct_loss + struct_cross * self.loss_weights.w_cross_consistency
-            losses['transient_consistency'] += trans_loss + trans_cross * self.loss_weights.w_cross_consistency
+            losses["self_struct_consistency"] += struct_loss
+            losses["cross_struct_consistency"] += struct_cross
+            losses["self_transient_consistency"] += trans_loss
+            losses["cross_transient_consistency"] += trans_cross
 
-        total = ((losses['self_L1'] + losses['cross_L1']) * self.loss_weights.w_L1_image + (
-                losses['self_perceptual'] + losses['cross_perceptual']) * self.loss_weights.w_perceptual + losses['KL'] * self.loss_weights.w_KL + losses[
-                     'struct_consistency'] * self.loss_weights.w_struct_consistency + losses[
-                     'transient_consistency'] * self.loss_weights.w_transient_consistency)
+        total = ((losses['self_recon_L1'] + losses['cross_recon_L1']) * self.loss_weights.w_L1_image + (
+                losses['self_recon_perceptual'] + losses['cross_recon_perceptual']) * self.loss_weights.w_perceptual + losses['KL'] * self.loss_weights.w_KL + (
+                             losses["self_struct_consistency"] + self.loss_weights.w_cross_consistency * losses[
+                         "cross_struct_consistency"]) * self.loss_weights.w_struct_consistency + (
+                         (losses["self_transient_consistency"] + losses[
+                             "cross_transient_consistency"] * self.loss_weights.w_cross_consistency) * self.loss_weights.w_transient_consistency))
         losses['total'] = total
         return losses
 

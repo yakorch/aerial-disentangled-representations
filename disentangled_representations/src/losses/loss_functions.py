@@ -6,9 +6,10 @@ from DISTS_pytorch import DISTS
 def L1_loss(x_1: torch.Tensor, x_2: torch.Tensor):
     return F.l1_loss(x_1, x_2, reduction='mean')
 
+
 def KL_divergence_from_multivariate_standard_normal_loss(mu: torch.Tensor, log_variance: torch.Tensor):
     kl_per_sample = 0.5 * (mu.pow(2) + log_variance.exp() - 1 - log_variance).sum(dim=1)
-    return kl_per_sample.mean() / mu.shape[1]
+    return kl_per_sample.mean()
 
 
 class DISTSPerceptualLoss:
