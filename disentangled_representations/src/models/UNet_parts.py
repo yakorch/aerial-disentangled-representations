@@ -32,11 +32,11 @@ class SeparableConv(nn.Module):
 
 
 class ResDilatedConv(nn.Module):
-    def __init__(self, in_ch, out_ch, dilation=2):
+    def __init__(self, in_channels, out_channels, dilation=2):
         super().__init__()
-        self.conv_1 = nn.Sequential(nn.Conv2d(in_ch, out_ch, 3, padding=1, bias=False), nn.BatchNorm2d(out_ch), nn.ReLU(inplace=True), )
-        self.conv_2 = nn.Sequential(nn.Conv2d(out_ch, out_ch, 3, padding=dilation, dilation=dilation, bias=False), nn.BatchNorm2d(out_ch), )
-        self.skip = nn.Conv2d(in_ch, out_ch, 1) if in_ch != out_ch else nn.Identity()
+        self.conv_1 = nn.Sequential(nn.Conv2d(in_channels, out_channels, 3, padding=1, bias=False), nn.BatchNorm2d(out_channels), nn.ReLU(inplace=True), )
+        self.conv_2 = nn.Sequential(nn.Conv2d(out_channels, out_channels, 3, padding=dilation, dilation=dilation, bias=False), nn.BatchNorm2d(out_channels), )
+        self.skip = nn.Conv2d(in_channels, out_channels, 1) if in_channels != out_channels else nn.Identity()
         self.relu = nn.ReLU(inplace=True)
 
     def forward(self, x):
@@ -47,22 +47,22 @@ class ResDilatedConv(nn.Module):
 
 
 class ASPPConv(nn.Module):
-    def __init__(self, in_ch, out_ch, dilation):
+    def __init__(self, in_channels, out_channels, dilation):
         super().__init__()
-        self.block = nn.Sequential(nn.Conv2d(in_ch, out_ch, 3, padding=dilation, dilation=dilation, bias=False), nn.BatchNorm2d(out_ch),
+        self.block = nn.Sequential(nn.Conv2d(in_channels, out_channels, 3, padding=dilation, dilation=dilation, bias=False), nn.BatchNorm2d(out_channels),
                                    nn.ReLU(inplace=True), )
 
     def forward(self, x): return self.block(x)
 
 
 class ASPPDown(nn.Module):
-    def __init__(self, in_ch, out_ch):
+    def __init__(self, in_channels, out_channels):
         super().__init__()
-        self.conv = DoubleNonLinearConv(in_ch, out_ch)
-        self.aspp_1 = ASPPConv(out_ch, out_ch, dilation=1)
-        self.aspp_2 = ASPPConv(out_ch, out_ch, dilation=2)
-        self.aspp_3 = ASPPConv(out_ch, out_ch, dilation=4)
-        self.project = nn.Sequential(nn.Conv2d(3 * out_ch, out_ch, 1, bias=False), nn.BatchNorm2d(out_ch), nn.ReLU(inplace=True), )
+        self.conv = DoubleNonLinearConv(in_channels, out_channels)
+        self.aspp_1 = ASPPConv(out_channels, out_channels, dilation=1)
+        self.aspp_2 = ASPPConv(out_channels, out_channels, dilation=2)
+        self.aspp_3 = ASPPConv(out_channels, out_channels, dilation=4)
+        self.project = nn.Sequential(nn.Conv2d(3 * out_channels, out_channels, 1, bias=False), nn.BatchNorm2d(out_channels), nn.ReLU(inplace=True), )
         self.pool = nn.MaxPool2d(2)
 
     def forward(self, x):
@@ -84,23 +84,28 @@ class Down(nn.Module):
         return self.pool_conv(x)
 
 
+from timm.layers.eca import EfficientChannelAttn
+
+
 class Up(nn.Module):
-    def __init__(self, in_channels: int, out_channels: int, conv_block: Type[nn.Module]) -> None:
+    def __init__(self, in_channels: int, out_channels: int, conv_block: nn.Module):
         super().__init__()
+        decoder_ch = in_channels - out_channels
+        skip_ch = out_channels
+        self.up = nn.Sequential(nn.Upsample(scale_factor=2, mode="bilinear", align_corners=True), nn.Conv2d(decoder_ch, skip_ch, kernel_size=1, bias=False), )
 
-        decoder_channels = in_channels - out_channels
-        skip_channels = out_channels
-        self.built_for_in = 2 * skip_channels
+        self.eca = EfficientChannelAttn(skip_ch * 2)
 
-        self.up = nn.Sequential(nn.Upsample(scale_factor=2, mode="bilinear", align_corners=True),
-                                nn.Conv2d(decoder_channels, skip_channels, kernel_size=1, bias=False), )
-        self.conv = conv_block(2 * skip_channels, out_channels)
+        self.conv = conv_block(skip_ch * 2, out_channels)
 
     def forward(self, x: torch.Tensor, skip: torch.Tensor) -> torch.Tensor:
         x = self.up(x)
+
         dy = skip.size(2) - x.size(2)
         dx = skip.size(3) - x.size(3)
         if dy or dx:
             x = F.pad(x, [dx // 2, dx - dx // 2, dy // 2, dy - dy // 2])
+
         x = torch.cat([skip, x], dim=1)
+        x = self.eca(x)
         return self.conv(x)

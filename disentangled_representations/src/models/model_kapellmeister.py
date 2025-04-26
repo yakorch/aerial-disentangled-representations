@@ -64,6 +64,24 @@ class Kapellmeister:
 
         return ReconstructionMetadata(hidden_params=hidden_params, style_params=style_params, auxiliary=x_auxiliary, reconstruction=x_hat)
 
+    def cross_reconstructions(self, A: torch.Tensor, B: torch.Tensor) -> tuple[torch.Tensor, torch.Tensor]:
+        a_hidden_params, a_auxiliary = self.half_forward_pass(A)
+        b_hidden_params, b_auxiliary = self.half_forward_pass(B)
+
+        z_a = VariationalTransientEncoder.sample_from_multivariate_normal(a_hidden_params.transient_params)
+        a_style_params = self.style_params_MLP(z_a)
+
+        z_b = VariationalTransientEncoder.sample_from_multivariate_normal(b_hidden_params.transient_params)
+        b_style_params = self.style_params_MLP(z_b)
+
+        a_structure_enriched_with_b_style = self.I2I_model.enrich_structural_embedding(a_hidden_params.structural_feature_map, b_style_params)
+        b_structure_enriched_with_a_style = self.I2I_model.enrich_structural_embedding(b_hidden_params.structural_feature_map, a_style_params)
+
+        a_hat = self.I2I_model.reconstruct(b_structure_enriched_with_a_style, b_auxiliary)
+        b_hat = self.I2I_model.reconstruct(a_structure_enriched_with_b_style, a_auxiliary)
+
+        return a_hat, b_hat
+
     def all_reconstructions(self, a: torch.Tensor, b: torch.Tensor) -> AllReconstructionsIntermediateMetadata:
         a_recon_metadata = self.self_reconstruction(a)
         b_recon_metadata = self.self_reconstruction(b)

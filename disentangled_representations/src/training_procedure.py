@@ -3,6 +3,7 @@ import warnings
 warnings.filterwarnings('ignore', message=r'.*deprecated since 0\.13.*', category=UserWarning, module=r'torchvision\.models\._utils')
 
 import torch
+torch.set_float32_matmul_precision('high')
 
 from torch.optim.lr_scheduler import OneCycleLR
 from pytorch_lightning.callbacks import LearningRateMonitor
@@ -125,7 +126,7 @@ class LitKapellmeister(pl.LightningModule):
     def configure_optimizers(self):
         optimizer = torch.optim.Adam(self.parameters(), lr=self.lr)
         total_steps = self.trainer.estimated_stepping_batches
-        scheduler = OneCycleLR(optimizer, max_lr=self.lr, total_steps=total_steps, pct_start=0.3, anneal_strategy='cos', div_factor=25.0, final_div_factor=1e3)
+        scheduler = OneCycleLR(optimizer, max_lr=self.lr, total_steps=total_steps, pct_start=0.3, anneal_strategy='cos', div_factor=5.0, final_div_factor=50)
         return [optimizer], [{"scheduler": scheduler, "interval": "step", "frequency": 1, }]
 
 
@@ -141,9 +142,9 @@ def parse_channels(ctx, param, val):
 @click.option('--max_epochs', default=50, help='Number of epochs')
 @click.option('--unet_channels', default='32,64,128,256', callback=parse_channels, help='CSV, e.g. `--unet-channels 32,64,128,256`.')
 @click.option('--latent_d', default=128, help='Transient latent dimensionality.')
-@click.option('--w_l1_image', default=0.75, help='L1 loss weight')
-@click.option('--w_perceptual', default=1.5, help='Perceptual loss weight')
-@click.option('--w_cross_recon', default=3.0, help='How much cross reconstruction is more important than self reconstruction.')
+@click.option('--w_l1_image', default=1, help='L1 loss weight')
+@click.option('--w_perceptual', default=2, help='Perceptual loss weight')
+@click.option('--w_cross_recon', default=5.0, help='How much cross reconstruction is more important than self reconstruction.')
 @click.option('--w_kl', default=0.5, help='KL loss weight')
 @click.option('--w_struct_consistency', default=0.5, help='Structural consistency weight')
 @click.option('--w_transient_consistency', default=0.75, help='Transient consistency weight')
@@ -181,7 +182,7 @@ def main(batch_size, val_batch_size, num_workers, lr, max_epochs, unet_channels,
     logger = TensorBoardLogger("tb_logs", name="disent_rep")
     lr_monitor = LearningRateMonitor(logging_interval="step")
 
-    trainer = pl.Trainer(precision=16, max_epochs=max_epochs, accelerator=accelerator, devices=devices, logger=logger, callbacks=[lr_monitor], )
+    trainer = pl.Trainer(max_epochs=max_epochs, accelerator=accelerator, devices=devices, logger=logger, callbacks=[lr_monitor]) # TODO: `precision=16` ?
     trainer.fit(model, train_loader, val_loader, ckpt_path=resume_from_checkpoint)
 
 
