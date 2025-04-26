@@ -125,7 +125,7 @@ class LitKapellmeister(pl.LightningModule):
         optimizer = torch.optim.Adam(self.parameters(), lr=self.lr)
         total_steps = self.trainer.estimated_stepping_batches
         scheduler = OneCycleLR(optimizer, max_lr=self.lr, total_steps=total_steps, pct_start=0.3, anneal_strategy='cos', div_factor=25.0, final_div_factor=1e3)
-        return {"optimizer": optimizer, "lr_scheduler": {"scheduler": scheduler, "interval": "step", "frequency": 1, }, }
+        return [optimizer], [{"scheduler": scheduler, "interval": "step", "frequency": 1, }]
 
 
 def parse_channels(ctx, param, val):
