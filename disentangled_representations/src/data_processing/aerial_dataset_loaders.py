@@ -50,7 +50,7 @@ def create_val_data_loader_for_image_pairs(batch_size: int, num_workers: int):
     sampler = WeightedRandomSampler(weights=weights, num_samples=num_samples, replacement=False)
 
     complete_train_ds = ConcatDataset(val_datasets)
-    train_data_loader = torch.utils.data.DataLoader(complete_train_ds, batch_size=batch_size, num_workers=num_workers, sampler=sampler, prefetch_factor=1,
-                                                    persistent_workers=True)
+    val_data_loader = torch.utils.data.DataLoader(complete_train_ds, batch_size=batch_size, num_workers=num_workers, sampler=sampler, prefetch_factor=1,
+                                                    persistent_workers=True, shuffle=False)
 
-    return train_data_loader
+    return val_data_loader

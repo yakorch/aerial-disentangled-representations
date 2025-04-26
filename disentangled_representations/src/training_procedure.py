@@ -5,7 +5,7 @@ warnings.filterwarnings('ignore', message=r'.*deprecated since 0\.13.*', categor
 import torch
 
 from torch.optim.lr_scheduler import OneCycleLR
-
+import torchvision.utils as vutils
 from collections import defaultdict
 from dataclasses import dataclass
 
@@ -104,18 +104,28 @@ class LitKapellmeister(pl.LightningModule):
         A, B = batch
         losses = self._shared_step(A, B)
         self._log_losses(losses, prefix='val/', on_step=False, on_epoch=True, prog_bar=True)
+
+        if batch_idx != 0:
+            return losses
+
+        with torch.no_grad():
+            meta = self.kapellmeister.all_reconstructions(A.to(self.device), B.to(self.device))
+
+            self_images = torch.cat([A, B, meta.a_recon, meta.b_recon], dim=0)
+            grid_self = vutils.make_grid(self_images, nrow=A.size(0), normalize=True, value_range=(0, 1))
+
+            cross_images = torch.cat([A, B, meta.a_hat, meta.b_hat], dim=0)
+            grid_cross = vutils.make_grid(cross_images, nrow=A.size(0), normalize=True, value_range=(0, 1))
+            self.logger.experiment.add_image("val/self_reconstructions", grid_self, self.current_epoch)
+            self.logger.experiment.add_image("val/cross_reconstructions", grid_cross, self.current_epoch)
+
         return losses
 
     def configure_optimizers(self):
         optimizer = torch.optim.Adam(self.parameters(), lr=self.lr)
         total_steps = self.trainer.estimated_stepping_batches
-        scheduler = OneCycleLR(optimizer, max_lr=self.lr, total_steps=total_steps, pct_start=0.3,
-            anneal_strategy='cos',
-            div_factor=25.0,
-            final_div_factor=1e3
-        )
-        return {"optimizer": optimizer, "lr_scheduler": {"scheduler": scheduler, "interval": "step",
-            "frequency": 1, }, }
+        scheduler = OneCycleLR(optimizer, max_lr=self.lr, total_steps=total_steps, pct_start=0.3, anneal_strategy='cos', div_factor=25.0, final_div_factor=1e3)
+        return {"optimizer": optimizer, "lr_scheduler": {"scheduler": scheduler, "interval": "step", "frequency": 1, }, }
 
 
 def parse_channels(ctx, param, val):
