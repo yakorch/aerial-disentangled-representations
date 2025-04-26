@@ -20,7 +20,7 @@ def _adaptive_instance_norm(features: torch.Tensor, params: torch.Tensor, eps: f
     return gamma * normalized + beta
 
 class UNet(I2IModel):
-    def __init__(self, in_channels: int, out_channels: int, channels: Sequence[int], conv_block_down: Type[nn.Module] = DoubleNonLinearConv, conv_block_up: Type[nn.Module] = SeparableConv):
+    def __init__(self, in_channels: int, out_channels: int, channels: Sequence[int], conv_block_down: Type[nn.Module], conv_block_up: Type[nn.Module], latent_dim: int):
         super().__init__()
         assert len(channels) >= 1
 
@@ -39,6 +39,13 @@ class UNet(I2IModel):
 
         self.out_conv = nn.Conv2d(channels[0], out_channels, kernel_size=1)
 
+        self.style_fuse = nn.Sequential(
+                nn.Conv2d(channels[-1] + latent_dim, channels[-1], kernel_size=3, padding=1, bias=False),
+                nn.BatchNorm2d(channels[-1]),
+                nn.ReLU(inplace=True),
+            )
+
+
     def compute_structural_embedding(self, x: torch.Tensor) -> tuple[torch.Tensor, Sequence[torch.Tensor]]:
         skips = []
         x = self.inc(x)
@@ -52,7 +59,11 @@ class UNet(I2IModel):
         return x, tuple(skips)
 
     def enrich_structural_embedding(self, feature_map: torch.Tensor, style_params: torch.Tensor) -> torch.Tensor:
-        return _adaptive_instance_norm(feature_map, style_params)
+        # return _adaptive_instance_norm(feature_map, style_params)
+        B, C, H, W = feature_map.shape
+        style_map = style_params.view(B, C, 1, 1).expand(-1, -1, H, W)
+        x = torch.cat([feature_map, style_map], dim=1)
+        return self.style_fuse(x)
 
     def reconstruct(self, x: torch.Tensor, skips: Sequence[torch.Tensor]) -> torch.Tensor:
         i = 0

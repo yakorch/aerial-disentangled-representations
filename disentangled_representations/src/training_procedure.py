@@ -146,9 +146,11 @@ def main(batch_size, val_batch_size, num_workers, lr, max_epochs, unet_channels,
 
     # efficient_net_b0 = EfficientNetB0VariationalTransientEncoder(in_channels=1, latent_dimensionality=latent_d)
 
-    I2I_model = UNet(in_channels=1, out_channels=1, channels=unet_channels, conv_block_down=DoubleNonLinearConv, conv_block_up=DoubleNonLinearConv)
     variational_transient_encoder = EfficientNetB0VariationalTransientEncoder(in_channels=1, latent_dimensionality=latent_d)
-    style_params_MLP = nn.Sequential(nn.Linear(latent_d, latent_d), nn.ReLU(), nn.Linear(latent_d, 2 * unet_channels[-1]))
+    # style_params_MLP = nn.Sequential(nn.Linear(latent_d, latent_d), nn.ReLU(inplace=True), nn.Linear(latent_d, 2 * unet_channels[-1]))
+    MLP_out = latent_d
+    style_params_MLP = nn.Sequential(nn.Linear(latent_d, latent_d), nn.ReLU(inplace=True), nn.Linear(latent_d, MLP_out))
+    I2I_model = UNet(in_channels=1, out_channels=1, channels=unet_channels, conv_block_down=DoubleNonLinearConv, conv_block_up=DoubleNonLinearConv, latent_dim=MLP_out)
 
     model = LitKapellmeister(I2I_model=I2I_model, variational_transient_encoder=variational_transient_encoder, style_params_MLP=style_params_MLP,
                              loss_weights=loss_weights, lr=lr, anneal_epochs=anneal_epochs)
