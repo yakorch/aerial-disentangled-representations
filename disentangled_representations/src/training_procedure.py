@@ -4,7 +4,7 @@ warnings.filterwarnings('ignore', message=r'.*deprecated since 0\.13.*', categor
 
 import torch
 
-torch.set_float32_matmul_precision('high')
+from torch.optim.lr_scheduler import OneCycleLR
 
 from collections import defaultdict
 from dataclasses import dataclass
@@ -107,7 +107,15 @@ class LitKapellmeister(pl.LightningModule):
         return losses
 
     def configure_optimizers(self):
-        return torch.optim.Adam(self.parameters(), lr=self.lr)
+        optimizer = torch.optim.Adam(self.parameters(), lr=self.lr)
+        total_steps = self.trainer.estimated_stepping_batches
+        scheduler = OneCycleLR(optimizer, max_lr=self.lr, total_steps=total_steps, pct_start=0.3,
+            anneal_strategy='cos',
+            div_factor=25.0,
+            final_div_factor=1e3
+        )
+        return {"optimizer": optimizer, "lr_scheduler": {"scheduler": scheduler, "interval": "step",
+            "frequency": 1, }, }
 
 
 def parse_channels(ctx, param, val):
@@ -132,8 +140,10 @@ def parse_channels(ctx, param, val):
 @click.option('--accelerator', default='auto', help="Accelerator: 'cpu', 'gpu', 'mps', or 'auto'")
 @click.option('--devices', default=1, type=int, help='Number of devices (e.g. GPUs or MPS)')
 @click.option('--anneal_epochs', default=10, type=int, help='Number of epochs over which to linearly anneal KL & consistency terms')
+@click.option("--resume_from_checkpoint", default=None, type=click.Path(exists=True, dir_okay=False),
+              help="Path to a Lightning checkpoint to resume training from.", )
 def main(batch_size, val_batch_size, num_workers, lr, max_epochs, unet_channels, latent_d, w_l1_image, w_perceptual, w_cross_recon, w_kl, w_struct_consistency,
-         w_transient_consistency, w_cross_consistency, accelerator, devices, anneal_epochs):
+         w_transient_consistency, w_cross_consistency, accelerator, devices, anneal_epochs, resume_from_checkpoint):
     loss_weights = LossWeights(w_L1_image=w_l1_image, w_perceptual=w_perceptual, w_cross_recon=w_cross_recon, w_KL=w_kl,
                                w_struct_consistency=w_struct_consistency, w_transient_consistency=w_transient_consistency,
                                w_cross_consistency=w_cross_consistency)
@@ -151,15 +161,16 @@ def main(batch_size, val_batch_size, num_workers, lr, max_epochs, unet_channels,
     # style_params_MLP = nn.Sequential(nn.Linear(latent_d, latent_d), nn.ReLU(inplace=True), nn.Linear(latent_d, 2 * unet_channels[-1]))
     MLP_out = latent_d
     style_params_MLP = nn.Sequential(nn.Linear(latent_d, latent_d), nn.ReLU(inplace=True), nn.Linear(latent_d, MLP_out))
-    I2I_model = UNet(in_channels=1, out_channels=1, channels=unet_channels, conv_block_down=DoubleNonLinearConv, conv_block_up=DoubleNonLinearConv, latent_dim=MLP_out)
+    I2I_model = UNet(in_channels=1, out_channels=1, channels=unet_channels, conv_block_down=DoubleNonLinearConv, conv_block_up=DoubleNonLinearConv,
+                     latent_dim=MLP_out)
 
     model = LitKapellmeister(I2I_model=I2I_model, variational_transient_encoder=variational_transient_encoder, style_params_MLP=style_params_MLP,
                              loss_weights=loss_weights, lr=lr, anneal_epochs=anneal_epochs)
 
     logger = TensorBoardLogger("tb_logs", name="disent_rep")
 
-    trainer = pl.Trainer(max_epochs=max_epochs, accelerator=accelerator, devices=devices, logger=logger, )
-    trainer.fit(model, train_loader, val_loader)
+    trainer = pl.Trainer(precision=16, max_epochs=max_epochs, accelerator=accelerator, devices=devices, logger=logger)
+    trainer.fit(model, train_loader, val_loader, ckpt_path=resume_from_checkpoint)
 
 
 if __name__ == '__main__':

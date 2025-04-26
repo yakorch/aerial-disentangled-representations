@@ -132,9 +132,14 @@ class UNet(I2IModel):
         in_ch = channels[-1] + latent_dim
         out_ch = channels[-1]
 
-        # self.style_fuse = nn.Sequential(  #     nn.Conv2d(in_ch, in_ch, kernel_size=5, padding=2, groups=in_ch, bias=False),  #     nn.Conv2d(in_ch, out_ch, kernel_size=1, bias=False),  #     nn.BatchNorm2d(out_ch),  #     nn.ReLU(inplace=True),  # )
+        # self.style_fuse = nn.Sequential(nn.Conv2d(in_ch, in_ch, kernel_size=5, padding=2, groups=in_ch, bias=False),
+        #     nn.Conv2d(in_ch, out_ch, kernel_size=1, bias=False),
+        #     nn.BatchNorm2d(out_ch),
+        #     nn.ReLU(inplace=True)
+        #     )
         # self.style_fuse = ConvNeXtFuse(in_ch=in_ch, out_ch=out_ch, kernel_size=9, expansion=4)
-        # self.style_fuse = EnhancedStyleFuse(in_ch, out_ch)  # self.style_fuse = SuperFuse(in_ch, out_ch)
+        # self.style_fuse = EnhancedStyleFuse(in_ch, out_ch)
+        # self.style_fuse = SuperFuse(in_ch, out_ch)
         self.style_fuse = ResDW5x5ECA(in_ch, out_ch)
 
     def compute_structural_embedding(self, x: torch.Tensor) -> tuple[torch.Tensor, Sequence[torch.Tensor]]:
