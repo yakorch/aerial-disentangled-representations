@@ -138,7 +138,7 @@ class UNet(I2IModel):
         #     nn.ReLU(inplace=True)
         #     )
         # self.style_fuse = ConvNeXtFuse(in_ch=in_ch, out_ch=out_ch, kernel_size=9, expansion=4)
-        self.style_fuse = EnhancedStyleFuse(in_ch, out_ch)
+        # self.style_fuse = EnhancedStyleFuse(in_ch, out_ch)
         # self.style_fuse = SuperFuse(in_ch, out_ch)
         # self.style_fuse = ResDW5x5ECA(in_ch, out_ch)
 
