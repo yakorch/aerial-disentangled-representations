@@ -31,6 +31,50 @@ class SeparableConv(nn.Module):
         return self.relu(self.bn(x))
 
 
+class ResDilatedConv(nn.Module):
+    def __init__(self, in_ch, out_ch, dilation=2):
+        super().__init__()
+        self.conv_1 = nn.Sequential(nn.Conv2d(in_ch, out_ch, 3, padding=1, bias=False), nn.BatchNorm2d(out_ch), nn.ReLU(inplace=True), )
+        self.conv_2 = nn.Sequential(nn.Conv2d(out_ch, out_ch, 3, padding=dilation, dilation=dilation, bias=False), nn.BatchNorm2d(out_ch), )
+        self.skip = nn.Conv2d(in_ch, out_ch, 1) if in_ch != out_ch else nn.Identity()
+        self.relu = nn.ReLU(inplace=True)
+
+    def forward(self, x):
+        res = self.skip(x)
+        x = self.conv_1(x)
+        x = self.conv_2(x)
+        return self.relu(x + res)
+
+
+class ASPPConv(nn.Module):
+    def __init__(self, in_ch, out_ch, dilation):
+        super().__init__()
+        self.block = nn.Sequential(nn.Conv2d(in_ch, out_ch, 3, padding=dilation, dilation=dilation, bias=False), nn.BatchNorm2d(out_ch),
+                                   nn.ReLU(inplace=True), )
+
+    def forward(self, x): return self.block(x)
+
+
+class ASPPDown(nn.Module):
+    def __init__(self, in_ch, out_ch):
+        super().__init__()
+        self.conv = DoubleNonLinearConv(in_ch, out_ch)
+        self.aspp_1 = ASPPConv(out_ch, out_ch, dilation=1)
+        self.aspp_2 = ASPPConv(out_ch, out_ch, dilation=2)
+        self.aspp_3 = ASPPConv(out_ch, out_ch, dilation=4)
+        self.project = nn.Sequential(nn.Conv2d(3 * out_ch, out_ch, 1, bias=False), nn.BatchNorm2d(out_ch), nn.ReLU(inplace=True), )
+        self.pool = nn.MaxPool2d(2)
+
+    def forward(self, x):
+        x = self.conv(x)
+        p1 = self.aspp_1(x)
+        p2 = self.aspp_2(x)
+        p4 = self.aspp_3(x)
+        x = torch.cat([p1, p2, p4], dim=1)
+        x = self.project(x)
+        return self.pool(x)
+
+
 class Down(nn.Module):
     def __init__(self, in_channels: int, out_channels: int, conv_block: Type[nn.Module]) -> None:
         super().__init__()
