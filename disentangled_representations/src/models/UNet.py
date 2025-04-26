@@ -8,7 +8,6 @@ from .UNet_parts import Down, Up, DoubleNonLinearConv
 from .abstract_models import I2IModel
 
 
-
 def _adaptive_instance_norm(features: torch.Tensor, params: torch.Tensor, eps: float = 1e-5) -> torch.Tensor:
     B, C, H, W = features.size()
     assert params.size(1) == 2 * C, f"Expected params of shape (B, {2 * C}), got {tuple(params.size())}"
@@ -51,26 +50,16 @@ class ConvNeXtFuse(nn.Module):
 class EnhancedStyleFuse(nn.Module):
     def __init__(self, in_ch, out_ch, se_reduction=4):
         super().__init__()
-        self.dw1 = nn.Conv2d(
-            in_ch, in_ch,
-            kernel_size=5, padding=4, dilation=2,
-            groups=in_ch, bias=False
-        )
+        self.dw1 = nn.Conv2d(in_ch, in_ch, kernel_size=5, padding=4, dilation=2, groups=in_ch, bias=False)
         self.bn1 = nn.BatchNorm2d(in_ch)
-        self.dw2 = nn.Conv2d(
-            in_ch, in_ch,
-            kernel_size=3, padding=1,
-            groups=in_ch, bias=False
-        )
+        self.dw2 = nn.Conv2d(in_ch, in_ch, kernel_size=3, padding=1, groups=in_ch, bias=False)
         self.bn2 = nn.BatchNorm2d(in_ch)
-        self.pw  = nn.Conv2d(in_ch, out_ch, kernel_size=1, bias=False)
+        self.pw = nn.Conv2d(in_ch, out_ch, kernel_size=1, bias=False)
         self.bn3 = nn.BatchNorm2d(out_ch)
         from timm.layers import SqueezeExcite
-        self.se  = SqueezeExcite(out_ch, rd_ratio=se_reduction)
+        self.se = SqueezeExcite(out_ch, rd_ratio=se_reduction)
         self.act = nn.ReLU(inplace=True)
-        self.res = (
-            nn.Conv2d(in_ch, out_ch, 1) if in_ch != out_ch else nn.Identity()
-        )
+        self.res = (nn.Conv2d(in_ch, out_ch, 1) if in_ch != out_ch else nn.Identity())
 
     def forward(self, x):
         shortcut = self.res(x)
@@ -103,6 +92,28 @@ class SuperFuse(nn.Module):
         return x
 
 
+class ResDW5x5ECA(nn.Module):
+    def __init__(self, in_ch, out_ch):
+        from timm.layers.eca import EfficientChannelAttn
+
+        super().__init__()
+        self.dw = nn.Conv2d(in_ch, in_ch, kernel_size=5, padding=2, groups=in_ch, bias=False)
+        self.bn1 = nn.BatchNorm2d(in_ch)
+        self.eca = EfficientChannelAttn(in_ch)
+        self.pw = nn.Conv2d(in_ch, out_ch, kernel_size=1, bias=False)
+        self.bn2 = nn.BatchNorm2d(out_ch)
+        self.act = nn.ReLU(inplace=True)
+
+        self.res = nn.Conv2d(in_ch, out_ch, 1) if in_ch != out_ch else nn.Identity()
+
+    def forward(self, x):
+        shortcut = self.res(x)
+        x = self.act(self.bn1(self.dw(x)))
+        x = self.eca(x)
+        x = self.bn2(self.pw(x))
+        return self.act(x + shortcut)
+
+
 class UNet(I2IModel):
     def __init__(self, in_channels: int, out_channels: int, channels: Sequence[int], conv_block_down: Type[nn.Module], conv_block_up: Type[nn.Module],
                  latent_dim: int):
@@ -123,9 +134,8 @@ class UNet(I2IModel):
 
         # self.style_fuse = nn.Sequential(  #     nn.Conv2d(in_ch, in_ch, kernel_size=5, padding=2, groups=in_ch, bias=False),  #     nn.Conv2d(in_ch, out_ch, kernel_size=1, bias=False),  #     nn.BatchNorm2d(out_ch),  #     nn.ReLU(inplace=True),  # )
         # self.style_fuse = ConvNeXtFuse(in_ch=in_ch, out_ch=out_ch, kernel_size=9, expansion=4)
-        self.style_fuse = EnhancedStyleFuse(in_ch, out_ch)
-        # self.style_fuse = SuperFuse(in_ch, out_ch)
-
+        # self.style_fuse = EnhancedStyleFuse(in_ch, out_ch)  # self.style_fuse = SuperFuse(in_ch, out_ch)
+        self.style_fuse = ResDW5x5ECA(in_ch, out_ch)
 
     def compute_structural_embedding(self, x: torch.Tensor) -> tuple[torch.Tensor, Sequence[torch.Tensor]]:
         skips = []

@@ -32,8 +32,8 @@ def create_train_data_loader_for_image_pairs(batch_size: int, num_workers: int):
 
 
 def create_val_data_loader_for_image_pairs(batch_size: int, num_workers: int):
-    dataset_weights_mapping_val: dict[torch.utils.data.Dataset, float] = {SYSU_dataset_val: 0.02, S2Looking_dataset_val: 0.1, Hi_UCD_dataset_val: 0.2,
-                                                                          BANDON_dataset_val: 0.75}
+    dataset_weights_mapping_val: dict[torch.utils.data.Dataset, float] = {SYSU_dataset_val: 0.02, S2Looking_dataset_val: 0.1, Hi_UCD_dataset_val: 0.15,
+                                                                          BANDON_dataset_val: 0.5}
     val_datasets = list(dataset_weights_mapping_val.keys())
 
     logger.info(f"{({ds.__class__.__name__: len(ds) for ds in val_datasets})=}")
