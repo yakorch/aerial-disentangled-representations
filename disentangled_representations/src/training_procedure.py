@@ -5,6 +5,7 @@ warnings.filterwarnings('ignore', message=r'.*deprecated since 0\.13.*', categor
 import torch
 
 from torch.optim.lr_scheduler import OneCycleLR
+from pytorch_lightning.callbacks import LearningRateMonitor
 import torchvision.utils as vutils
 from collections import defaultdict
 from dataclasses import dataclass
@@ -178,8 +179,9 @@ def main(batch_size, val_batch_size, num_workers, lr, max_epochs, unet_channels,
                              loss_weights=loss_weights, lr=lr, anneal_epochs=anneal_epochs)
 
     logger = TensorBoardLogger("tb_logs", name="disent_rep")
+    lr_monitor = LearningRateMonitor(logging_interval="step")
 
-    trainer = pl.Trainer(precision=16, max_epochs=max_epochs, accelerator=accelerator, devices=devices, logger=logger)
+    trainer = pl.Trainer(precision=16, max_epochs=max_epochs, accelerator=accelerator, devices=devices, logger=logger, callbacks=[lr_monitor], )
     trainer.fit(model, train_loader, val_loader, ckpt_path=resume_from_checkpoint)
 
 
