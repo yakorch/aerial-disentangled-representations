@@ -111,7 +111,7 @@ class LitKapellmeister(pl.LightningModule):
         with torch.no_grad():
             meta = self.kapellmeister.all_reconstructions(A.to(self.device), B.to(self.device))
 
-            self_images = torch.cat([A, B, meta.a_recon, meta.b_recon], dim=0)
+            self_images = torch.cat([A, B, meta.a_recon_metadata.reconstruction, meta.b_recon_metadata.reconstruction], dim=0)
             grid_self = vutils.make_grid(self_images, nrow=A.size(0), normalize=True, value_range=(0, 1))
 
             cross_images = torch.cat([A, B, meta.a_hat, meta.b_hat], dim=0)

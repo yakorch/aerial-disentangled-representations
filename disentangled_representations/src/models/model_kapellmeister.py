@@ -91,3 +91,13 @@ class Kapellmeister:
                                                                                                     structural_feature_map=a_hat_structure),
                                                       b_hat_hidden_params=HiddenParams(transient_params=b_hat_latent_params, transient_sample=None,
                                                                                        structural_feature_map=b_hat_structure))
+
+    def standardize(self, x: torch.Tensor) -> ReconstructionMetadata:
+        hidden_params, x_auxiliary = self.half_forward_pass(x)
+        B, C = hidden_params.transient_params.shape
+        hidden_params.transient_sample = torch.zeros((B, C // 2), dtype=hidden_params.transient_params.dtype, device=x.device)
+        style_params = self.style_params_MLP(hidden_params.transient_sample)
+
+        x_structure_enriched = self.I2I_model.enrich_structural_embedding(hidden_params.structural_feature_map, style_params)
+        x_hat = self.I2I_model.reconstruct(x_structure_enriched, x_auxiliary)
+        return ReconstructionMetadata(hidden_params=hidden_params, style_params=style_params, auxiliary=x_auxiliary, reconstruction=x_hat)
