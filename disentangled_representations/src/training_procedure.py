@@ -103,9 +103,10 @@ class LitKapellmeister(pl.LightningModule):
 
         recon_perceptual_loss = compute_attention_based_perceptual_loss(A=A, B=B, A_hat=A_hat, B_hat=B_hat)
 
-        # NOTE: for logging
-        recon_losses_A = compute_reconstruction_losses(A, A_hat)
-        recon_losses_B = compute_reconstruction_losses(B, B_hat)
+        with torch.no_grad():
+            # NOTE: for logging
+            recon_losses_A = compute_reconstruction_losses(A, A_hat)
+            recon_losses_B = compute_reconstruction_losses(B, B_hat)
 
         A_KL_loss, B_KL_loss = compute_KL_loss(simple_meta.a_transient_params), compute_KL_loss(simple_meta.b_transient_params)
 
