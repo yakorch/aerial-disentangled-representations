@@ -29,6 +29,7 @@ class VGGFeaturesExtractor:
             p.requires_grad = False
 
     def __call__(self, x: torch.Tensor) -> list[torch.Tensor]:
+        self.model.to(x.device)
         return self.model(x)
 
 
