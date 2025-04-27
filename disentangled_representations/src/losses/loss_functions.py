@@ -15,21 +15,21 @@ def KL_divergence_from_multivariate_standard_normal_loss(mu: torch.Tensor, log_v
 
 class DISTSPerceptualLoss:
     def __init__(self):
-        self.DISTS_loss = DISTS()
+        device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+        self.DISTS_loss = DISTS().to(device)
 
     def __call__(self, A: torch.Tensor, B: torch.Tensor):
-        self.DISTS_loss.to(A.device)
         return self.DISTS_loss(A, B, require_grad=True, batch_average=True)
 
 
 class VGGFeaturesExtractor:
     def __init__(self):
-        self.model = timm.create_model('vgg19', pretrained=True, features_only=True, out_indices=(0, 1, 2, 3), in_chans=1)
+        device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+        self.model = timm.create_model('vgg19', pretrained=True, features_only=True, out_indices=(0, 1, 2, 3), in_chans=1).to(device)
         for p in self.model.parameters():
             p.requires_grad = False
 
     def __call__(self, x: torch.Tensor) -> list[torch.Tensor]:
-        self.model.to(x.device)
         return self.model(x)
 
 
