@@ -175,7 +175,7 @@ def parse_channels(ctx, param, val):
 @click.option('--unet_channels', default='32,64,128,256', callback=parse_channels, help='CSV, e.g. `--unet-channels 32,64,128,256`.')
 @click.option('--latent_d', default=128, help='Transient latent dimensionality.')
 @click.option('--w_l1_image', default=1, help='L1 loss weight')
-@click.option('--w_perceptual', default=2.5, help='Perceptual loss weight')
+@click.option('--w_perceptual', default=5.0, help='Perceptual loss weight')
 @click.option('--w_cross_recon', default=5.0, help='How much cross reconstruction is more important than self reconstruction.')
 @click.option('--w_kl', default=0.5, help='KL loss weight')
 @click.option('--w_struct_consistency', default=0.5, help='Structural consistency weight')
