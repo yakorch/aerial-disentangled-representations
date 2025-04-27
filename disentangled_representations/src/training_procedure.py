@@ -97,8 +97,6 @@ class LitKapellmeister(pl.LightningModule):
     def _shared_step_simplified(self, A: torch.Tensor, B: torch.Tensor):
         losses = defaultdict(float)
 
-        anneal_factor = min(1.0, self.current_epoch / float(self.anneal_epochs)) if self.anneal_epochs > 0 else 1.0
-
         simple_meta: SimplifiedCrossReconstructionMeta = self.kapellmeister.cross_reconstructions(A, B)
         A_hat, B_hat = simple_meta.a_hat, simple_meta.b_hat
 
@@ -107,10 +105,13 @@ class LitKapellmeister(pl.LightningModule):
 
         A_KL_loss, B_KL_loss = compute_KL_loss(simple_meta.a_transient_params), compute_KL_loss(simple_meta.b_transient_params)
 
+        anneal_factor = min(1.0, self.current_epoch / float(self.anneal_epochs)) if self.anneal_epochs > 0 else 1.0
+
         losses["cross_recon_L1"] += (recon_losses_A[0] + recon_losses_B[0]) * 0.5
         losses["cross_recon_perceptual"] += (recon_losses_A[1] + recon_losses_B[1]) * 0.5
         losses["KL"] += (A_KL_loss + B_KL_loss) * 0.5
-        losses["total"] = losses["cross_recon_L1"] * self.loss_weights.w_L1_image + losses["cross_recon_perceptual"] * self.loss_weights.w_perceptual + losses["KL"] * self.loss_weights.w_KL * anneal_factor
+        losses["total"] = losses["cross_recon_L1"] * self.loss_weights.w_L1_image + losses["cross_recon_perceptual"] * self.loss_weights.w_perceptual + losses[
+            "KL"] * self.loss_weights.w_KL * anneal_factor
         return losses
 
     def _log_losses(self, losses: dict, prefix: str = '', on_step: bool = True, on_epoch: bool = True, prog_bar: bool = False):
@@ -140,14 +141,10 @@ class LitKapellmeister(pl.LightningModule):
             return losses
 
         with torch.no_grad():
-            meta = self.kapellmeister.all_reconstructions(A.to(self.device), B.to(self.device))
-
-            self_images = torch.cat([A, B, meta.a_recon_metadata.reconstruction, meta.b_recon_metadata.reconstruction], dim=0)
-            grid_self = vutils.make_grid(self_images, nrow=A.size(0), normalize=True, value_range=(0, 1))
+            meta = self.kapellmeister.cross_reconstructions(A.to(self.device), B.to(self.device))
 
             cross_images = torch.cat([A, B, meta.a_hat, meta.b_hat], dim=0)
-            grid_cross = vutils.make_grid(cross_images, nrow=A.size(0), normalize=True, value_range=(0, 1))
-            self.logger.experiment.add_image("val/self_reconstructions", grid_self, self.current_epoch)
+            grid_cross = vutils.make_grid(cross_images, nrow=A.size(0), normalize=False, value_range=(0, 1))
             self.logger.experiment.add_image("val/cross_reconstructions", grid_cross, self.current_epoch)
 
         return losses
