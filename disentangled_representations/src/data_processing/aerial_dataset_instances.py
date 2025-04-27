@@ -11,9 +11,15 @@ _shared_shared_transform = A.Compose(
      A.Perspective(scale=(0.02, 0.05), p=0.3), ])
 
 _noise_transform = A.Compose(
-    [A.RandomBrightnessContrast(brightness_limit=0.2, contrast_limit=0.2, p=0.8), A.Blur(blur_limit=3, p=0.5), A.GaussNoise(var_limit=(5.0, 20.0), p=0.3),
-        A.ChannelShuffle(p=0.1), A.ToGray(p=0.05),
-        A.CoarseDropout(min_holes=1, max_holes=2, min_height=8, max_height=32, min_width=8, max_width=32, fill_value=0, p=0.1), ])
+    [A.ShiftScaleRotate(
+        shift_limit=0.20,
+        scale_limit=0.10,
+        rotate_limit=25,
+        border_mode=0,
+        p=0.9
+    ),
+        A.RandomBrightnessContrast(brightness_limit=0.2, contrast_limit=0.2, p=0.75), A.Blur(blur_limit=3, p=0.5), A.GaussNoise(var_limit=(5.0, 20.0), p=0.3),
+        A.ChannelShuffle(p=0.1)])
 
 _final_transform = A.Compose([A.Normalize(mean=(0., 0., 0.), std=(1., 1., 1.)), ToTensorV2(), ])
 
