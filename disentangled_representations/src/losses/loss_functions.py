@@ -46,7 +46,7 @@ def compute_feature_attention(features_A: list[torch.Tensor], features_B: torch.
 def weighted_perceptual_loss(masks, features_A, features_A_hat, layer_weights):
     total = 0.0
     for w, f_hat, f_ref, mask in zip(layer_weights, features_A_hat, features_A, masks):
-        diff = (f_hat - f_ref)  # .pow(2)
+        diff = (f_hat - f_ref).abs()  # .pow(2)
         mask_exp = mask.expand_as(diff)
         total += w * (mask_exp * diff).mean()
     return total
