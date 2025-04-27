@@ -54,4 +54,4 @@ def compute_attention_based_perceptual_loss(A: torch.Tensor, B: torch.Tensor, A_
     layer_weights = [1.0, 0.75, 0.5, 0.5]
     for i in range(2):
         total += weighted_perceptual_loss(mask, features[i], features_hat[i], layer_weights)
-    return total
+    return total * 0.5
