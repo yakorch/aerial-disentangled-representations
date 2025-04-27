@@ -38,6 +38,14 @@ class AllReconstructionsIntermediateMetadata:
     b_hat_hidden_params: HiddenParams
 
 
+@dataclass
+class SimplifiedCrossReconstructionMeta:
+    a_hat: torch.Tensor
+    b_hat: torch.Tensor
+    a_transient_params: torch.Tensor
+    b_transient_params: torch.Tensor
+
+
 class Kapellmeister:
     def __init__(self, I2I_model: I2IModel, variational_transient_encoder: VariationalTransientEncoder, style_params_MLP: nn.Module) -> None:
         self.I2I_model = I2I_model
@@ -64,7 +72,7 @@ class Kapellmeister:
 
         return ReconstructionMetadata(hidden_params=hidden_params, style_params=style_params, auxiliary=x_auxiliary, reconstruction=x_hat)
 
-    def cross_reconstructions(self, A: torch.Tensor, B: torch.Tensor) -> tuple[torch.Tensor, torch.Tensor]:
+    def cross_reconstructions(self, A: torch.Tensor, B: torch.Tensor) -> SimplifiedCrossReconstructionMeta:
         a_hidden_params, a_auxiliary = self.half_forward_pass(A)
         b_hidden_params, b_auxiliary = self.half_forward_pass(B)
 
@@ -80,7 +88,7 @@ class Kapellmeister:
         a_hat = self.I2I_model.reconstruct(b_structure_enriched_with_a_style, b_auxiliary)
         b_hat = self.I2I_model.reconstruct(a_structure_enriched_with_b_style, a_auxiliary)
 
-        return a_hat, b_hat
+        return SimplifiedCrossReconstructionMeta(a_hat=a_hat, b_hat=b_hat, a_transient_params=a_hidden_params.transient_params, b_transient_params=b_hidden_params.transient_params)
 
     def all_reconstructions(self, a: torch.Tensor, b: torch.Tensor) -> AllReconstructionsIntermediateMetadata:
         a_recon_metadata = self.self_reconstruction(a)

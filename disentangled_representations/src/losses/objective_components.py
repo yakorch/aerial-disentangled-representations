@@ -14,6 +14,11 @@ def compute_reconstruction_losses(A: torch.Tensor, B: torch.Tensor) -> tuple[tor
     return l1_image_loss, perceptual_loss
 
 
+def compute_KL_loss(transient_params: torch.Tensor):
+    mu, log_variance = VariationalTransientEncoder.multivariate_params_from_vector(transient_params)
+    return KL_divergence_from_multivariate_standard_normal_loss(mu, log_variance)
+
+
 def compute_self_losses(X: torch.Tensor, recon_metadata: ReconstructionMetadata, cycled_hidden_params: HiddenParams) -> tuple[tuple[torch.Tensor, ...], torch.Tensor, torch.Tensor, torch.Tensor]:
     recon_losses = compute_reconstruction_losses(recon_metadata.reconstruction, X)
 

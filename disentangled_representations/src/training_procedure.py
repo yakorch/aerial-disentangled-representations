@@ -3,6 +3,7 @@ import warnings
 warnings.filterwarnings('ignore', message=r'.*deprecated since 0\.13.*', category=UserWarning, module=r'torchvision\.models\._utils')
 
 import torch
+
 torch.set_float32_matmul_precision('high')
 
 from torch.optim.lr_scheduler import OneCycleLR
@@ -18,8 +19,8 @@ import torch.nn as nn
 from pytorch_lightning.loggers import TensorBoardLogger
 
 from .data_processing.aerial_dataset_loaders import create_train_data_loader_for_image_pairs, create_val_data_loader_for_image_pairs
-from .losses.objective_components import compute_cross_losses, compute_self_losses, compute_reconstruction_losses
-from .models.model_kapellmeister import I2IModel, Kapellmeister, VariationalTransientEncoder
+from .losses.objective_components import compute_cross_losses, compute_self_losses, compute_reconstruction_losses, compute_KL_loss
+from .models.model_kapellmeister import I2IModel, Kapellmeister, VariationalTransientEncoder, SimplifiedCrossReconstructionMeta
 
 
 @dataclass
@@ -35,7 +36,7 @@ class LossWeights:
 
 class LitKapellmeister(pl.LightningModule):
     def __init__(self, I2I_model: I2IModel, variational_transient_encoder: VariationalTransientEncoder, style_params_MLP: torch.nn.Module,
-                 loss_weights: LossWeights, lr: float = 1e-4, anneal_epochs: int = 10):
+                 loss_weights: LossWeights, lr: float = 1e-4, anneal_epochs: int = 10, simplified_training: bool = True):
         super().__init__()
 
         self.I2I_model = I2I_model
@@ -50,25 +51,14 @@ class LitKapellmeister(pl.LightningModule):
         self.loss_weights = loss_weights
         self.lr = lr
 
+        self.simplified_training = simplified_training
+
         self.save_hyperparameters(ignore=["I2I_model", "variational_transient_encoder", "style_params_MLP"])
 
     def forward(self, A, B):
         return self.kapellmeister.all_reconstructions(A, B)
 
-    def _shared_step(self, A: torch.Tensor, B: torch.Tensor):
-        losses = defaultdict(float)
-
-        half_epoch = self.trainer.max_epochs / 2
-        only_cross = self.current_epoch <= half_epoch
-        if only_cross:
-            A_hat, B_hat = self.kapellmeister.cross_reconstructions(A, B)
-            recon_losses_A = compute_reconstruction_losses(A, A_hat)
-            recon_losses_B = compute_reconstruction_losses(B, B_hat)
-            losses["cross_recon_L1"] += (recon_losses_A[0] + recon_losses_B[0]) * 0.5
-            losses["cross_recon_perceptual"] += (recon_losses_A[1] + recon_losses_B[1]) * 0.5
-            losses["total"] = losses["cross_recon_L1"] * self.loss_weights.w_L1_image + losses["cross_recon_perceptual"] * self.loss_weights.w_perceptual
-            return losses
-
+    def _shared_step_complex(self, A: torch.Tensor, B: torch.Tensor):
         meta = self.kapellmeister.all_reconstructions(A, B)
         originals = [A, B]
         self_metas = [meta.a_recon_metadata, meta.b_recon_metadata]
@@ -76,6 +66,7 @@ class LitKapellmeister(pl.LightningModule):
         hats = [meta.a_hat, meta.b_hat]
         hat_params = [meta.a_hat_hidden_params, meta.b_hat_hidden_params]
 
+        losses = defaultdict(float)
 
         for i in range(2):
             recon_losses, KL_loss, struct_loss, trans_loss = compute_self_losses(X=originals[i], recon_metadata=self_metas[i], cycled_hidden_params=cycled[i])
@@ -92,7 +83,7 @@ class LitKapellmeister(pl.LightningModule):
             losses["self_transient_consistency"] += trans_loss
             losses["cross_transient_consistency"] += trans_cross
 
-        anneal_factor = min(1.0, 2 * (self.current_epoch - half_epoch)  / float(self.anneal_epochs)) if self.anneal_epochs > 0 else 1.0
+        anneal_factor = min(1.0, self.current_epoch / float(self.anneal_epochs)) if self.anneal_epochs > 0 else 1.0
 
         total = ((losses['self_recon_L1'] + losses['cross_recon_L1'] * self.loss_weights.w_cross_recon) * self.loss_weights.w_L1_image + (
                 losses['self_recon_perceptual'] + losses[
@@ -103,6 +94,25 @@ class LitKapellmeister(pl.LightningModule):
         losses['total'] = total
         return losses
 
+    def _shared_step_simplified(self, A: torch.Tensor, B: torch.Tensor):
+        losses = defaultdict(float)
+
+        anneal_factor = min(1.0, self.current_epoch / float(self.anneal_epochs)) if self.anneal_epochs > 0 else 1.0
+
+        simple_meta: SimplifiedCrossReconstructionMeta = self.kapellmeister.cross_reconstructions(A, B)
+        A_hat, B_hat = simple_meta.a_hat, simple_meta.b_hat
+
+        recon_losses_A = compute_reconstruction_losses(A, A_hat)
+        recon_losses_B = compute_reconstruction_losses(B, B_hat)
+
+        A_KL_loss, B_KL_loss = compute_KL_loss(simple_meta.a_transient_params), compute_KL_loss(simple_meta.b_transient_params)
+
+        losses["cross_recon_L1"] += (recon_losses_A[0] + recon_losses_B[0]) * 0.5
+        losses["cross_recon_perceptual"] += (recon_losses_A[1] + recon_losses_B[1]) * 0.5
+        losses["KL"] += (A_KL_loss + B_KL_loss) * 0.5
+        losses["total"] = losses["cross_recon_L1"] * self.loss_weights.w_L1_image + losses["cross_recon_perceptual"] * self.loss_weights.w_perceptual + losses["KL"] * self.loss_weights.w_KL * anneal_factor
+        return losses
+
     def _log_losses(self, losses: dict, prefix: str = '', on_step: bool = True, on_epoch: bool = True, prog_bar: bool = False):
         for name, value in losses.items():
             key = f"{prefix}{name}"
@@ -111,13 +121,19 @@ class LitKapellmeister(pl.LightningModule):
 
     def training_step(self, batch, batch_idx):
         A, B = batch
-        losses = self._shared_step(A, B)
+        if self.simplified_training:
+            losses = self._shared_step_simplified(A, B)
+        else:
+            losses = self._shared_step_complex(A, B)
         self._log_losses(losses, prefix='train/', on_step=True, on_epoch=True, prog_bar=True)
         return losses['total']
 
     def validation_step(self, batch, batch_idx):
         A, B = batch
-        losses = self._shared_step(A, B)
+        if self.simplified_training:
+            losses = self._shared_step_simplified(A, B)
+        else:
+            losses = self._shared_step_complex(A, B)
         self._log_losses(losses, prefix='val/', on_step=False, on_epoch=True, prog_bar=True)
 
         if batch_idx != 0:
@@ -156,7 +172,7 @@ def parse_channels(ctx, param, val):
 @click.option('--unet_channels', default='32,64,128,256', callback=parse_channels, help='CSV, e.g. `--unet-channels 32,64,128,256`.')
 @click.option('--latent_d', default=128, help='Transient latent dimensionality.')
 @click.option('--w_l1_image', default=1, help='L1 loss weight')
-@click.option('--w_perceptual', default=2, help='Perceptual loss weight')
+@click.option('--w_perceptual', default=2.5, help='Perceptual loss weight')
 @click.option('--w_cross_recon', default=5.0, help='How much cross reconstruction is more important than self reconstruction.')
 @click.option('--w_kl', default=0.5, help='KL loss weight')
 @click.option('--w_struct_consistency', default=0.5, help='Structural consistency weight')
@@ -190,12 +206,12 @@ def main(batch_size, val_batch_size, num_workers, lr, max_epochs, unet_channels,
                      latent_dim=MLP_out)
 
     model = LitKapellmeister(I2I_model=I2I_model, variational_transient_encoder=variational_transient_encoder, style_params_MLP=style_params_MLP,
-                             loss_weights=loss_weights, lr=lr, anneal_epochs=anneal_epochs)
+                             loss_weights=loss_weights, lr=lr, anneal_epochs=anneal_epochs, simplified_training=True)
 
     logger = TensorBoardLogger("tb_logs", name="disent_rep")
     lr_monitor = LearningRateMonitor(logging_interval="step")
 
-    trainer = pl.Trainer(max_epochs=max_epochs, accelerator=accelerator, devices=devices, logger=logger, callbacks=[lr_monitor]) # TODO: `precision=16` ?
+    trainer = pl.Trainer(max_epochs=max_epochs, accelerator=accelerator, devices=devices, logger=logger, callbacks=[lr_monitor])  # TODO: `precision=16` ?
     trainer.fit(model, train_loader, val_loader, ckpt_path=resume_from_checkpoint)
 
 
