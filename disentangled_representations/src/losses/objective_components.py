@@ -2,10 +2,12 @@ import torch
 
 from disentangled_representations.src.models.abstract_models import VariationalTransientEncoder
 from disentangled_representations.src.models.model_kapellmeister import ReconstructionMetadata, HiddenParams
-from .loss_functions import L1_loss, KL_divergence_from_multivariate_standard_normal_loss, DISTSPerceptualLoss, Wasserstein_distance_between_normals, compute_feature_attention, weighted_perceptual_loss, VGGFeaturesExtractor
+from .loss_functions import L1_loss, KL_divergence_from_multivariate_standard_normal_loss, DISTSPerceptualLoss, Wasserstein_distance_between_normals, \
+    compute_feature_attention, weighted_perceptual_loss, VGGFeaturesExtractor
 
 Perceptual_loss = DISTSPerceptualLoss()
 vgg_feature_extractor = VGGFeaturesExtractor()
+
 
 def compute_reconstruction_losses(A: torch.Tensor, B: torch.Tensor) -> tuple[torch.Tensor, ...]:
     l1_image_loss = L1_loss(A, B)
@@ -18,7 +20,8 @@ def compute_KL_loss(transient_params: torch.Tensor):
     return KL_divergence_from_multivariate_standard_normal_loss(mu, log_variance)
 
 
-def compute_self_losses(X: torch.Tensor, recon_metadata: ReconstructionMetadata, cycled_hidden_params: HiddenParams) -> tuple[tuple[torch.Tensor, ...], torch.Tensor, torch.Tensor, torch.Tensor]:
+def compute_self_losses(X: torch.Tensor, recon_metadata: ReconstructionMetadata, cycled_hidden_params: HiddenParams) -> tuple[
+    tuple[torch.Tensor, ...], torch.Tensor, torch.Tensor, torch.Tensor]:
     recon_losses = compute_reconstruction_losses(recon_metadata.reconstruction, X)
 
     mu, log_variance = VariationalTransientEncoder.multivariate_params_from_vector(recon_metadata.hidden_params.transient_params)
@@ -54,4 +57,4 @@ def compute_attention_based_perceptual_loss(A: torch.Tensor, B: torch.Tensor, A_
     layer_weights = [1.0, 0.75, 0.5, 0.5]
     for i in range(2):
         total += weighted_perceptual_loss(mask, features[i], features_hat[i], layer_weights)
-    return total * 0.5
+    return total * 0.5 / sum(layer_weights)
