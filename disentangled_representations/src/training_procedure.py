@@ -129,7 +129,7 @@ def main(batch_size, val_batch_size, num_workers, lr, max_epochs, hidden_feature
     val_loader = create_val_data_loader_for_image_pairs(batch_size=val_batch_size, num_workers=2, )
 
     from .models.image_encoders import EfficientNetB0
-    image_encoder = EfficientNetB0(in_channels=3)
+    image_encoder = EfficientNetB0(in_channels=1)
     image_encoders_embedding_dim = image_encoder.feature_dim
 
     if variational:

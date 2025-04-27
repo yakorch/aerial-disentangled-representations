@@ -10,7 +10,7 @@ def create_train_data_loader_for_image_pairs(batch_size: int, num_workers: int):
     # dataset_weights_mapping_train: dict[torch.utils.data.Dataset, float] = {LEVIR_dataset_train: 1.5, SYSU_dataset_train: 0.1, S2Looking_dataset_train: 0.25,
     #                                                                         Hi_UCD_dataset_train: 0.5, GVLM_dataset: 25.0, BANDON_dataset_train: 4.0, }
 
-    dataset_weights_mapping_train: dict[torch.utils.data.Dataset, float] = {BANDON_dataset_train: 1.5, GVLM_dataset: 6.0, Hi_UCD_dataset_train: 0.75, LEVIR_dataset_train: 0.4}
+    dataset_weights_mapping_train: dict[torch.utils.data.Dataset, float] = {BANDON_dataset_train: 3.0, GVLM_dataset: 6.0, Hi_UCD_dataset_train: 0.9, LEVIR_dataset_train: 0.6}
 
     train_datasets = list(dataset_weights_mapping_train.keys())
 
@@ -29,7 +29,7 @@ def create_train_data_loader_for_image_pairs(batch_size: int, num_workers: int):
 
     complete_train_ds = ConcatDataset(train_datasets)
     train_data_loader = torch.utils.data.DataLoader(complete_train_ds, batch_size=batch_size, num_workers=num_workers, sampler=sampler, prefetch_factor=10,
-                                                    persistent_workers=True, pin_memory=True)
+                                                    persistent_workers=True, pin_memory=True, in_order=False)
 
     return train_data_loader
 
@@ -57,6 +57,6 @@ def create_val_data_loader_for_image_pairs(batch_size: int, num_workers: int):
 
     complete_train_ds = ConcatDataset(val_datasets)
     val_data_loader = torch.utils.data.DataLoader(complete_train_ds, batch_size=batch_size, num_workers=num_workers, sampler=sampler, prefetch_factor=6,
-                                                    persistent_workers=True, shuffle=False)
+                                                    persistent_workers=True, shuffle=False, in_order=False)
 
     return val_data_loader

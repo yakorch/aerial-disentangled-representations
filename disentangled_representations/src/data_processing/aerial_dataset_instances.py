@@ -4,7 +4,7 @@ from albumentations.pytorch import ToTensorV2
 
 from .aerial_datasets import LEVIR_CDPlus_Dataset, SYSU_CD_Dataset, S2LookingDataset, Hi_UCD_Dataset, GVLM_CD_Dataset, BANDONDataset
 
-_read_color = True
+_read_color = False
 
 _shared_shared_transform = A.Compose(
     [A.HorizontalFlip(p=0.4), A.VerticalFlip(p=0.2), A.ShiftScaleRotate(shift_limit=0.0625, scale_limit=0.1, rotate_limit=15, border_mode=0, p=0.5),
