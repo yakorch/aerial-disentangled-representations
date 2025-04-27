@@ -33,12 +33,13 @@ class VGGFeaturesExtractor:
         return self.model(x)
 
 
-def compute_feature_attention(features_A: list[torch.Tensor], features_B: torch.Tensor) -> list[torch.Tensor]:
+def compute_feature_attention(features_A: list[torch.Tensor], features_B: torch.Tensor, min_val = 0.02) -> list[torch.Tensor]:
     masks = []
     for f_A, f_B in zip(features_A, features_B):
         diff = (f_A - f_B).abs().mean(dim=1, keepdim=True)
-        mask = diff.pow(2).detach()
-        masks.append(mask)
+        mask = diff.pow(2)
+        mask = torch.clamp(mask, min=min_val)
+        masks.append(mask.detach())
     return masks
 
 
