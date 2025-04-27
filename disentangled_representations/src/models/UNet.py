@@ -127,6 +127,11 @@ class UNet(I2IModel):
         self.ups = nn.ModuleList(
             Up(in_channels=rev_ch[i] + rev_ch[i + 1], out_channels=rev_ch[i + 1], conv_block=conv_block_up) for i in range(len(rev_ch) - 1))
 
+        min_p = 0.2
+        max_p = 0.7
+        num_skips = len(self.ups)
+        self.skip_dropouts = nn.ModuleList([nn.Dropout2d(p=min_p + (max_p - min_p) * (num_skips - 1 - i) / (num_skips - 1)) for i in range(num_skips)])
+
         self.out_conv = nn.Conv2d(channels[0], out_channels, kernel_size=1)
 
         in_ch = channels[-1] + latent_dim
@@ -138,9 +143,7 @@ class UNet(I2IModel):
         #     nn.ReLU(inplace=True)
         #     )
         # self.style_fuse = ConvNeXtFuse(in_ch=in_ch, out_ch=out_ch, kernel_size=9, expansion=4)
-        # self.style_fuse = EnhancedStyleFuse(in_ch, out_ch)
-        # self.style_fuse = SuperFuse(in_ch, out_ch)
-        # self.style_fuse = ResDW5x5ECA(in_ch, out_ch)
+        self.style_fuse = EnhancedStyleFuse(in_ch, out_ch)  # self.style_fuse = SuperFuse(in_ch, out_ch)  # self.style_fuse = ResDW5x5ECA(in_ch, out_ch)
 
     def compute_structural_embedding(self, x: torch.Tensor) -> tuple[torch.Tensor, Sequence[torch.Tensor]]:
         skips = []
@@ -163,9 +166,8 @@ class UNet(I2IModel):
         return self.style_fuse(x)
 
     def reconstruct(self, x: torch.Tensor, skips: Sequence[torch.Tensor]) -> torch.Tensor:
-        i = 0
-        for up, skip in zip(self.ups, reversed(skips)):
-            i += 1
+        for idx, (up, skip) in enumerate(zip(self.ups, reversed(skips))):
+            skip = self.skip_dropouts[idx](skip)
             x = up(x, skip=skip)
         return torch.sigmoid(self.out_conv(x))
 
