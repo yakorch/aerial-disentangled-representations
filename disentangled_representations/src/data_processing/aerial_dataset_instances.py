@@ -4,7 +4,7 @@ from albumentations.pytorch import ToTensorV2
 
 from .aerial_datasets import LEVIR_CDPlus_Dataset, SYSU_CD_Dataset, S2LookingDataset, Hi_UCD_Dataset, GVLM_CD_Dataset, BANDONDataset
 
-_read_color = False
+_read_color = True
 
 _shared_shared_transform = A.Compose(
     [A.HorizontalFlip(p=0.4), A.VerticalFlip(p=0.2), A.ShiftScaleRotate(shift_limit=0.0625, scale_limit=0.1, rotate_limit=15, border_mode=0, p=0.5),
@@ -28,11 +28,11 @@ def make_transforms(crop_scale, use_noise: bool):
     return shared, unique
 
 
-DATASETS = {LEVIR_CDPlus_Dataset: [("train", (0.4, 0.75), True), ("test", (0.8, 1.0), False), ],
+DATASETS = {LEVIR_CDPlus_Dataset: [("train", (0.6, 0.9), True), ("test", (0.8, 1.0), False), ],
             SYSU_CD_Dataset: [("train", (0.9, 1.0), True), ("val", (0.9, 1.0), False), ("test", (0.9, 1.0), False), ],
             S2LookingDataset: [("train", (0.4, 0.75), True), ("val", (0.7, 0.95), False), ("test", (0.7, 0.95), False), ],
             Hi_UCD_Dataset: [("train", (0.75, 1.0), True), ("val", (0.9, 1.0), False), ("test", (0.9, 1.0), False), ],
-            GVLM_CD_Dataset: [(None, (0.1, 0.5), True), ],
+            GVLM_CD_Dataset: [(None, (0.1, 0.4), True), ],
             BANDONDataset: [("train", (0.3, 0.9), True), ("val", (0.65, 0.95), False), ("test", (0.65, 0.95), False), ], }
 
 aerial_datasets_mapping: dict[str, torch.utils.data.Dataset] = {}
