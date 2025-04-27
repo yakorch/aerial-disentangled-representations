@@ -33,11 +33,11 @@ class VGGFeaturesExtractor:
         return self.model(x)
 
 
-def compute_feature_attention(features_A: list[torch.Tensor], features_B: torch.Tensor, min_val = 0.02) -> list[torch.Tensor]:
+def compute_feature_attention(features_A: list[torch.Tensor], features_B: torch.Tensor, min_val = 0.1) -> list[torch.Tensor]:
     masks = []
     for f_A, f_B in zip(features_A, features_B):
         diff = (f_A - f_B).abs().mean(dim=1, keepdim=True)
-        mask = diff.pow(2)
+        mask = diff  # .pow(2)
         mask = torch.clamp(mask, min=min_val)
         masks.append(mask.detach())
     return masks
@@ -46,7 +46,7 @@ def compute_feature_attention(features_A: list[torch.Tensor], features_B: torch.
 def weighted_perceptual_loss(masks, features_A, features_A_hat, layer_weights):
     total = 0.0
     for w, f_hat, f_ref, mask in zip(layer_weights, features_A_hat, features_A, masks):
-        diff = (f_hat - f_ref).pow(2)
+        diff = (f_hat - f_ref)  # .pow(2)
         mask_exp = mask.expand_as(diff)
         total += w * (mask_exp * diff).mean()
     return total
