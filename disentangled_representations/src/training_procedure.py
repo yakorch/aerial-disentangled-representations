@@ -19,7 +19,8 @@ import torch.nn as nn
 from pytorch_lightning.loggers import TensorBoardLogger
 
 from .data_processing.aerial_dataset_loaders import create_train_data_loader_for_image_pairs, create_val_data_loader_for_image_pairs
-from .losses.objective_components import compute_cross_losses, compute_self_losses, compute_reconstruction_losses, compute_KL_loss
+from .losses.objective_components import compute_cross_losses, compute_self_losses, compute_reconstruction_losses, compute_KL_loss, \
+    compute_attention_based_perceptual_loss
 from .models.model_kapellmeister import I2IModel, Kapellmeister, VariationalTransientEncoder, SimplifiedCrossReconstructionMeta
 
 
@@ -100,6 +101,9 @@ class LitKapellmeister(pl.LightningModule):
         simple_meta: SimplifiedCrossReconstructionMeta = self.kapellmeister.cross_reconstructions(A, B)
         A_hat, B_hat = simple_meta.a_hat, simple_meta.b_hat
 
+        recon_perceptual_loss = compute_attention_based_perceptual_loss(A=A, B=B, A_hat=A_hat, B_hat=B_hat)
+
+        # NOTE: for logging
         recon_losses_A = compute_reconstruction_losses(A, A_hat)
         recon_losses_B = compute_reconstruction_losses(B, B_hat)
 
@@ -109,9 +113,10 @@ class LitKapellmeister(pl.LightningModule):
 
         losses["cross_recon_L1"] += (recon_losses_A[0] + recon_losses_B[0]) * 0.5
         losses["cross_recon_perceptual"] += (recon_losses_A[1] + recon_losses_B[1]) * 0.5
+        losses["cross_recon_attention_perceptual"] += recon_perceptual_loss
         losses["KL"] += (A_KL_loss + B_KL_loss) * 0.5
-        losses["total"] = losses["cross_recon_L1"] * self.loss_weights.w_L1_image + losses["cross_recon_perceptual"] * self.loss_weights.w_perceptual + losses[
-            "KL"] * self.loss_weights.w_KL * anneal_factor
+
+        losses["total"] = losses["cross_recon_attention_perceptual"] * self.loss_weights.w_perceptual + losses["KL"] * self.loss_weights.w_KL * anneal_factor
         return losses
 
     def _log_losses(self, losses: dict, prefix: str = '', on_step: bool = True, on_epoch: bool = True, prog_bar: bool = False):
