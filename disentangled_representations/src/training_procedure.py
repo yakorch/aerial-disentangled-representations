@@ -13,12 +13,10 @@ from dataclasses import dataclass
 
 import click
 import pytorch_lightning as pl
-import torch.nn as nn
 from pytorch_lightning.loggers import TensorBoardLogger
 
 from .data_processing.aerial_dataset_loaders import create_train_data_loader_for_image_pairs, create_val_data_loader_for_image_pairs
 from lightly.loss import NTXentLoss
-from .losses.loss_functions import KL_divergence_from_multivariate_standard_normal_loss
 from .losses.objective_components import compute_KL_loss
 from .models.abstract_models import ImageEncoder, DeterministicProjector, VariationalProjector
 from .models.model_kapellmeister import Kapellmeister
@@ -121,10 +119,10 @@ def parse_hidden_features(ctx, param, val):
 @click.option('--accelerator', default='auto', help="Accelerator: 'cpu', 'gpu', 'mps', or 'auto'")
 @click.option('--devices', default=1, type=int, help='Number of devices (e.g. GPUs or MPS)')
 @click.option('--anneal_epochs', default=10, type=int, help='Number of epochs over which to linearly anneal KL.')
-@click.option("--resume_from_checkpoint", default=None, type=click.Path(exists=True, dir_okay=False), help="Path to a Lightning checkpoint to resume training from.", )
+@click.option("--resume_from_checkpoint", default=None, type=click.Path(exists=True, dir_okay=False),
+              help="Path to a Lightning checkpoint to resume training from.", )
 def main(batch_size, val_batch_size, num_workers, lr, max_epochs, hidden_features, total_z_dimensionality, variational, temperature, w_ntxent, w_kl,
          accelerator, devices, anneal_epochs, resume_from_checkpoint):
-
     loss_weights = LossWeights(w_NTXent=w_ntxent, w_KL=w_kl)
 
     train_loader = create_train_data_loader_for_image_pairs(batch_size=batch_size, num_workers=num_workers, )
@@ -132,18 +130,20 @@ def main(batch_size, val_batch_size, num_workers, lr, max_epochs, hidden_feature
 
     from .models.image_encoders import EfficientNetB0
     image_encoder = EfficientNetB0(in_channels=3)
-    image_encoders_embedding_dim = 1280
+    image_encoders_embedding_dim = image_encoder.feature_dim
 
     if variational:
         assert total_z_dimensionality % 2 == 0
         from .models.projectors import SimpleVariationalProjector
-        projector = SimpleVariationalProjector(input_dimensionality=image_encoders_embedding_dim, hidden_features=hidden_features, latent_dimensionality=total_z_dimensionality // 2)
+        projector = SimpleVariationalProjector(input_dimensionality=image_encoders_embedding_dim, hidden_features=hidden_features,
+                                               latent_dimensionality=total_z_dimensionality // 2)
     else:
         from .models.projectors import SimpleDeterministicProjector
-        projector = SimpleDeterministicProjector(input_dimensionality=image_encoders_embedding_dim, hidden_features=hidden_features, output_dimensionality=total_z_dimensionality)
+        projector = SimpleDeterministicProjector(input_dimensionality=image_encoders_embedding_dim, hidden_features=hidden_features,
+                                                 output_dimensionality=total_z_dimensionality)
 
-
-    model = LitKapellmeister(image_encoder=image_encoder, projector=projector, loss_weights=loss_weights, lr=lr, anneal_epochs=anneal_epochs, temperature=temperature)
+    model = LitKapellmeister(image_encoder=image_encoder, projector=projector, loss_weights=loss_weights, lr=lr, anneal_epochs=anneal_epochs,
+                             temperature=temperature)
 
     logger = TensorBoardLogger("tb_logs", name="disent_rep")
     lr_monitor = LearningRateMonitor(logging_interval="step")
