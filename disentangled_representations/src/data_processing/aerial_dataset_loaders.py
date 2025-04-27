@@ -28,8 +28,8 @@ def create_train_data_loader_for_image_pairs(batch_size: int, num_workers: int):
     sampler = WeightedRandomSampler(weights=weights, num_samples=num_samples, replacement=True)
 
     complete_train_ds = ConcatDataset(train_datasets)
-    train_data_loader = torch.utils.data.DataLoader(complete_train_ds, batch_size=batch_size, num_workers=num_workers, sampler=sampler, prefetch_factor=2,
-                                                    persistent_workers=True)
+    train_data_loader = torch.utils.data.DataLoader(complete_train_ds, batch_size=batch_size, num_workers=num_workers, sampler=sampler, prefetch_factor=3,
+                                                    persistent_workers=True, pin_memory=True)
 
     return train_data_loader
 
