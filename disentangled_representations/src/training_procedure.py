@@ -72,13 +72,13 @@ class LitKapellmeister(pl.LightningModule):
 
         assert len(losses.keys()) == 2, "Only KL and NTXent were expected."
 
-        losses['total'] = total
+        losses['loss'] = total
         return losses
 
     def _log_losses(self, losses: dict, prefix: str = '', on_step: bool = True, on_epoch: bool = True, prog_bar: bool = False):
         for name, value in losses.items():
             key = f"{prefix}{name}"
-            show_bar = prog_bar if name == 'total' else False
+            show_bar = prog_bar if name == 'loss' else False
             self.log(key, value, on_step=on_step, on_epoch=on_epoch, prog_bar=show_bar)
 
     def training_step(self, batch, batch_idx):
