@@ -10,7 +10,7 @@ def create_train_data_loader_for_image_pairs(batch_size: int, num_workers: int):
     # dataset_weights_mapping_train: dict[torch.utils.data.Dataset, float] = {LEVIR_dataset_train: 1.5, SYSU_dataset_train: 0.1, S2Looking_dataset_train: 0.25,
     #                                                                         Hi_UCD_dataset_train: 0.5, GVLM_dataset: 25.0, BANDON_dataset_train: 4.0, }
 
-    dataset_weights_mapping_train: dict[torch.utils.data.Dataset, float] = {BANDON_dataset_train: 1.0, GVLM_dataset: 5.0, Hi_UCD_dataset_train: 0.5, LEVIR_dataset_train: 0.4}
+    dataset_weights_mapping_train: dict[torch.utils.data.Dataset, float] = {BANDON_dataset_train: 1.5, GVLM_dataset: 6.0, Hi_UCD_dataset_train: 0.75, LEVIR_dataset_train: 0.4}
 
     train_datasets = list(dataset_weights_mapping_train.keys())
 
