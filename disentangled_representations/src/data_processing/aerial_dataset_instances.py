@@ -41,12 +41,12 @@ def make_transforms(crop_scale, use_noise: bool):
     return shared, unique
 
 
-DATASETS = {LEVIR_CDPlus_Dataset: [("train", (0.6, 0.9), True), ("test", (0.8, 1.0), False), ],
-            SYSU_CD_Dataset: [("train", (0.9, 1.0), True), ("val", (0.9, 1.0), False), ("test", (0.9, 1.0), False), ],
-            S2LookingDataset: [("train", (0.4, 0.75), True), ("val", (0.7, 0.95), False), ("test", (0.7, 0.95), False), ],
+DATASETS = {LEVIR_CDPlus_Dataset: [("train", (0.6, 0.9), True), ("test", (1.0, 1.0), False), ],
+            SYSU_CD_Dataset: [("train", (0.9, 1.0), True), ("val", (0.9, 1.0), False), ("test", (1.0, 1.0), False), ],
+            S2LookingDataset: [("train", (0.4, 0.75), True), ("val", (0.7, 0.95), False), ("test", (1.0, 1.0), False), ],
             Hi_UCD_Dataset: [("train", (0.75, 1.0), True), ("val", (0.9, 1.0), False), ("test", (1.0, 1.0), False), ],
             GVLM_CD_Dataset: [(None, (0.1, 0.4), True), ],
-            BANDONDataset: [("train", (0.3, 0.9), True), ("val", (0.65, 0.95), False), ("test", (0.65, 0.95), False), ], }
+            BANDONDataset: [("train", (0.3, 0.9), True), ("val", (0.65, 0.95), False), ("test", (1.0, 1.0), False), ], }
 
 aerial_datasets_mapping: dict[str, torch.utils.data.Dataset] = {}
 for ds_class, specs in DATASETS.items():

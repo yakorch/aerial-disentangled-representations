@@ -147,16 +147,11 @@ def main(batch_size, val_batch_size, num_workers, lr, max_epochs, hidden_feature
 
     logger = TensorBoardLogger("tb_logs", name="disent_rep")
     lr_monitor = LearningRateMonitor(logging_interval="step")
-    checkpoint_callback = ModelCheckpoint(monitor="val/loss", mode="min", save_top_k=1, dirpath="checkpoints/", filename="best-val-loss")
-    early_stop_callback = EarlyStopping(
-        monitor="val/NTXent",
-        mode="min",
-        patience=20,
-        verbose=True
-    )
+    checkpoint_callback = ModelCheckpoint(monitor="val/loss_epoch", mode="min", save_top_k=1, dirpath="checkpoints/", filename="best-val-loss")
+    early_stop_callback = EarlyStopping(monitor="val/NTXent", mode="min", patience=20, verbose=True)
 
-    trainer = pl.Trainer(max_epochs=max_epochs, accelerator=accelerator, devices=devices, logger=logger, callbacks=[lr_monitor, checkpoint_callback, early_stop_callback],
-                         log_every_n_steps=4)
+    trainer = pl.Trainer(max_epochs=max_epochs, accelerator=accelerator, devices=devices, logger=logger,
+                         callbacks=[lr_monitor, checkpoint_callback, early_stop_callback], log_every_n_steps=4)
     trainer.fit(model, train_loader, val_loader, ckpt_path=resume_from_checkpoint)
 
 
