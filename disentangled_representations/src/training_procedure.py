@@ -126,11 +126,11 @@ def main(batch_size, val_batch_size, num_workers, lr, max_epochs, hidden_feature
     loss_weights = LossWeights(w_NTXent=w_ntxent, w_KL=w_kl)
 
     train_loader = create_train_data_loader_for_image_pairs(batch_size=batch_size, num_workers=num_workers, )
-    val_loader = create_val_data_loader_for_image_pairs(batch_size=val_batch_size, num_workers=2, )
+    val_loader = create_val_data_loader_for_image_pairs(batch_size=val_batch_size, num_workers=num_workers, )
 
     from .models.image_encoders import EfficientNetB0
     image_encoder = EfficientNetB0(in_channels=1)
-    image_encoders_embedding_dim = image_encoder.feature_dim
+    image_encoders_embedding_dim = int(image_encoder.feature_dim)
 
     if variational:
         assert total_z_dimensionality % 2 == 0

@@ -28,7 +28,7 @@ def create_train_data_loader_for_image_pairs(batch_size: int, num_workers: int):
     sampler = WeightedRandomSampler(weights=weights, num_samples=num_samples, replacement=True)
 
     complete_train_ds = ConcatDataset(train_datasets)
-    train_data_loader = torch.utils.data.DataLoader(complete_train_ds, batch_size=batch_size, num_workers=num_workers, sampler=sampler, prefetch_factor=10,
+    train_data_loader = torch.utils.data.DataLoader(complete_train_ds, batch_size=batch_size, num_workers=num_workers, sampler=sampler, prefetch_factor=1,
                                                     persistent_workers=True, pin_memory=True, in_order=False)
 
     return train_data_loader
@@ -56,7 +56,7 @@ def create_val_data_loader_for_image_pairs(batch_size: int, num_workers: int):
     sampler = WeightedRandomSampler(weights=weights, num_samples=num_samples, replacement=False)
 
     complete_train_ds = ConcatDataset(val_datasets)
-    val_data_loader = torch.utils.data.DataLoader(complete_train_ds, batch_size=batch_size, num_workers=num_workers, sampler=sampler, prefetch_factor=6,
+    val_data_loader = torch.utils.data.DataLoader(complete_train_ds, batch_size=batch_size, num_workers=num_workers // 4, sampler=sampler, prefetch_factor=1,
                                                     persistent_workers=True, shuffle=False, in_order=False)
 
     return val_data_loader

@@ -28,4 +28,4 @@ class SimpleDeterministicProjector(DeterministicProjector):
 
 class SimpleVariationalProjector(SimpleDeterministicProjector, VariationalProjector):
     def __init__(self, input_dimensionality: int, hidden_features: list[int], latent_dimensionality: int) -> None:
-        super(SimpleDeterministicProjector, self).__init__(input_dimensionality, hidden_features, 2 * latent_dimensionality)
+        super().__init__(input_dimensionality, hidden_features, 2 * latent_dimensionality)
