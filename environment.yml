@@ -1,24 +1,27 @@
 name: disent
 channels:
   - conda-forge
-  - menpo
 dependencies:
-  - python=3.12
+  - albumentations==1.4.20
+  - click
+  - faiss
+  - ipykernel
+  - ipywidgets
+  - jupyter
+  - jupyterlab
+  - kornia
+  - lightly
+  - lightning
+  - loguru
+  - matplotlib
+  - notebook
   - numpy
   - opencv
+  - python=3.12
   - pytorch
-  - loguru
-  - torchvision
-  - notebook
-  - ipykernel
-  - jupyterlab
-  - matplotlib
-  - albumentations==1.4.20
+  - tensorboard
   - timm
   - torchinfo
-  - jupyter
-  - ipywidgets
-  - click
-  - lightning
-  - tensorboard
-  - lightly
+  - torchvision
+  - pip:
+    - DISTS-pytorch==0.1

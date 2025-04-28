@@ -72,6 +72,7 @@ class FilenameIDPairedImagesDataset(PairedImagesDataset):
         self.cv2_flag = cv2_read_flag
 
         assert shared_transform.additional_targets == {}
+        shared_transform = copy.deepcopy(shared_transform)
         shared_transform.add_targets({"image_B": "image"})
 
         self.shared_transform = shared_transform

@@ -149,9 +149,9 @@ def main(batch_size, val_batch_size, num_workers, lr, max_epochs, hidden_feature
     lr_monitor = LearningRateMonitor(logging_interval="step")
     checkpoint_callback = ModelCheckpoint(monitor="val/loss", mode="min", save_top_k=1, dirpath="checkpoints/", filename="best-val-loss")
     early_stop_callback = EarlyStopping(
-        monitor="val/loss",
+        monitor="val/NTXent",
         mode="min",
-        patience=5,
+        patience=20,
         verbose=True
     )
 
