@@ -18,8 +18,7 @@ _noise_transform = A.Compose(
         border_mode=0,
         p=0.9
     ),
-        A.RandomBrightnessContrast(brightness_limit=0.2, contrast_limit=0.2, p=0.75), A.Blur(blur_limit=3, p=0.5), A.GaussNoise(var_limit=(5.0, 20.0), p=0.3),
-        A.ChannelShuffle(p=0.1)])
+        A.RandomBrightnessContrast(brightness_limit=0.2, contrast_limit=0.2, p=0.75), A.Blur(blur_limit=3, p=0.5), A.GaussNoise(var_limit=(5.0, 20.0), p=0.3),])
 
 _final_transform = A.Compose([A.Normalize(mean=(0., 0., 0.), std=(1., 1., 1.)), ToTensorV2(), ])
 
