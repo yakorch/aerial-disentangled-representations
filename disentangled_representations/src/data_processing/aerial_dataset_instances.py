@@ -16,9 +16,23 @@ _shared_shared_transform = A.Compose(
     [A.HorizontalFlip(p=0.4), A.VerticalFlip(p=0.2), A.ShiftScaleRotate(shift_limit=0.0625, scale_limit=0.1, rotate_limit=15, border_mode=0, p=0.5),
      A.Perspective(scale=(0.02, 0.05), p=0.3), ])
 
-_noise_transform = A.Compose([A.ShiftScaleRotate(shift_limit=0.20, scale_limit=0.10, rotate_limit=25, border_mode=0, p=0.9),
+_noise_transform = A.Compose([A.ShiftScaleRotate(shift_limit=0.20, scale_limit=0.15, rotate_limit=30, border_mode=0, p=0.9),
+                              A.OneOf([
+                                  A.GridDistortion(num_steps=5, distort_limit=0.3, p=0.5),
+                                  A.OpticalDistortion(distort_limit=0.5, shift_limit=0.5, p=0.5),
+                                  A.ElasticTransform(alpha=1.0, sigma=50, p=0.5),
+                              ], p=0.7),
                               A.RandomBrightnessContrast(brightness_limit=0.2, contrast_limit=0.2, p=0.75), A.Blur(blur_limit=3, p=0.5),
-                              A.GaussNoise(var_limit=(5.0, 20.0), p=0.3), ])
+                              A.OneOf([
+                                  A.MotionBlur(blur_limit=7, p=0.3),
+                                  A.MedianBlur(blur_limit=7, p=0.3),
+                                  A.GaussNoise(var_limit=(10.0, 50.0), p=0.3),
+                                  A.CoarseDropout(max_holes=8, max_height=32, max_width=32, fill_value=0, p=0.4),
+                              ], p=0.6),
+                              A.ImageCompression(quality_lower=10, quality_upper=30, p=0.4),
+                              ])
+
+
 
 _final_transform = A.Compose([A.Normalize(mean=(0., 0., 0.), std=(1., 1., 1.)), ToTensorV2(), ])
 
