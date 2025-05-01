@@ -4,7 +4,6 @@ channels:
 dependencies:
   - albumentations==1.4.20
   - click
-  - faiss
   - ipykernel
   - ipywidgets
   - jupyter
@@ -19,9 +18,13 @@ dependencies:
   - opencv
   - python=3.12
   - pytorch
+  - scikit-learn
+  - streamlit
+  - tbparse
   - tensorboard
   - timm
   - torchinfo
   - torchvision
   - pip:
     - DISTS-pytorch==0.1
+    - faiss-cpu==1.10.0
