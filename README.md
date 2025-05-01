@@ -7,7 +7,7 @@ To download or familiarize yourself with the data, please refer to the [datasets
 Image retrieval operates on compact image embeddings. We compared two approaches for robust image representation learning building upon the best practices in self-supervised learning. Training is performed on image pairs of the same location under different environmental and/or seasonal conditions.       
  
 ## Training
-Training was performed on a single A100 GPU with 80GB VRAM. NT-Xent loss was used for optimization, thus a large batch size is required.
+Training was performed on a single A100 GPU with 80GB VRAM. Since NT-Xent loss is used for training, a large batch size is required.
 
 The training with the deterministic projector was performed with:
 ```bash
@@ -23,4 +23,8 @@ tensorboard --logdir=tb_logs/disent_rep
 
 
 ### Environment creation
-The [`environment.yml`](./environment.yml) is provided. Make sure the `pytorch` is installed with CUDA support for training. 
+The [`environment.yml`](./environment.yml) is provided. Make sure the `pytorch` is installed with CUDA support for training.
+
+
+### AI Assistance
+Portions of this codebase were generated with the help of OpenAI’s ChatGPT.
