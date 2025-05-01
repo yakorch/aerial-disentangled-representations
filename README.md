@@ -27,7 +27,7 @@ Run a visualization app that allows to explore the retrieval performance of the 
 python -m streamlit run app/app.py --server.fileWatcherType none
 ```
 
-Also, you may want to explore [jupyter notebooks](disentangled_representations/notebooks) that were used to create visualizations and test the trained models.
+Also, you may want to rerun [jupyter notebooks](disentangled_representations/notebooks) that were used to create visualizations and test the trained models.
 
 ### Environment creation
 The [`environment.yml`](./environment.yml) is provided. Make sure the `pytorch` is installed with CUDA support for training.
